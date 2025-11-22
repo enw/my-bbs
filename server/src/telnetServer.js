@@ -106,11 +106,10 @@ ${ANSI.BRIGHT_WHITE}Press ${ANSI.BRIGHT_CYAN}[N]${ANSI.BRIGHT_WHITE} for New Use
     // Remove telnet IAC (Interpret As Command) sequences
     cleanData = cleanData.replace(/\xff[\xfb\xfc\xfd\xfe]./g, '')
     
-    // Handle backspace
+    // Handle backspace (client handles display, we just update buffer)
     if (cleanData === '\x7f' || cleanData === '\x08') {
       if (this.inputBuffer.length > 0) {
         this.inputBuffer = this.inputBuffer.slice(0, -1)
-        this.write('\x08 \x08') // Backspace, space, backspace to erase character
       }
       return
     }
@@ -132,10 +131,9 @@ ${ANSI.BRIGHT_WHITE}Press ${ANSI.BRIGHT_CYAN}[N]${ANSI.BRIGHT_WHITE} for New Use
       }
     }
     
-    // Add to input buffer and echo
+    // Add to input buffer (don't echo - let client handle it)
     if (cleanData.length > 0 && cleanData.charCodeAt(0) >= 32) {
       this.inputBuffer += cleanData
-      this.write(cleanData)
     }
   }
   
@@ -431,6 +429,7 @@ function createTelnetServer(dbPath, port = 2323) {
   server.listen(port, () => {
     console.log(`Telnet BBS server listening on port ${port}`)
     console.log(`Connect with: telnet localhost ${port}`)
+    console.log(`Or use netcat: nc localhost ${port}`)
   })
   
   server.on('error', (err) => {
