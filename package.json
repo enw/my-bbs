@@ -1,0 +1,43 @@
+{
+  "name": "retro-bbs",
+  "version": "1.0.0",
+  "description": "Authentic 1993-style BBS experience",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev:client": "vite",
+    "dev:server": "nodemon server/src/index.js",
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "build:client": "vite build",
+    "electron:dev": "concurrently \"npm run dev:client\" \"npm run dev:server\" \"wait-on http://localhost:5173 && NODE_ENV=development electron .\"",
+    "electron:build": "npm run build:client && electron-builder",
+    "server": "node server/src/index.js"
+  },
+  "keywords": [
+    "bbs",
+    "retro",
+    "ansi",
+    "terminal"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.4.6",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "express-session": "^1.18.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.1.1",
+    "concurrently": "^9.2.1",
+    "electron": "39.2.3",
+    "electron-builder": "^26.0.12",
+    "nodemon": "^3.1.11",
+    "vite": "^7.2.4",
+    "wait-on": "^9.0.3"
+  },
+  "packageManager": "pnpm@10.20.0+sha512.cf9998222162dd85864d0a8102e7892e7ba4ceadebbf5a31f9c2fce48dfce317a9c53b9f6464d1ef9042cba2e02ae02a9f7c143a2b438cd93c91840f0192b9dd"
+}
