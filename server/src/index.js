@@ -301,4 +301,11 @@ app.listen(PORT, () => {
   console.log(`Retro BBS Server running on http://localhost:${PORT}`)
 })
 
+// Start telnet server if enabled
+if (process.env.ENABLE_TELNET !== 'false') {
+  const { createTelnetServer } = require('./telnetServer')
+  const TELNET_PORT = process.env.TELNET_PORT || 2323
+  createTelnetServer(path.join(__dirname, '../data/bbs.db'), TELNET_PORT)
+}
+
 module.exports = app
