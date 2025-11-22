@@ -10,23 +10,86 @@ const Terminal = () => {
   const terminalRef = useRef(null)
   const inputRef = useRef(null)
   const parser = useRef(new ANSIParser())
+  const currentScreenRef = useRef('splash')
 
   useEffect(() => {
-    // Show splash screen
-    showSplashScreen()
+    // Show splash screen on mount only - inline to avoid dependency issues
+    const splash = `\x1b[1;36m
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║  \x1b[1;33m██████╗ ███████╗████████╗██████╗  ██████╗     ██████╗ ██████╗ ███████╗\x1b[1;36m  ║
+║  \x1b[1;33m██╔══██╗██╔════╝╚══██╔══╝██╔══██╗██╔═══██╗    ██╔══██╗██╔══██╗██╔════╝\x1b[1;36m  ║
+║  \x1b[1;33m██████╔╝█████╗     ██║   ██████╔╝██║   ██║    ██████╔╝██████╔╝███████╗\x1b[1;36m  ║
+║  \x1b[1;33m██╔══██╗██╔══╝     ██║   ██╔══██╗██║   ██║    ██╔══██╗██╔══██╗╚════██║\x1b[1;36m  ║
+║  \x1b[1;33m██║  ██║███████╗   ██║   ██║  ██║╚██████╔╝    ██████╔╝██████╔╝███████║\x1b[1;36m  ║
+║  \x1b[1;33m╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝     ╚═════╝ ╚═════╝ ╚══════╝\x1b[1;36m  ║
+║                                                                           ║
+║                       \x1b[1;37mWelcome to the RETRO BBS!\x1b[1;36m                            ║
+║                                                                           ║
+║                    \x1b[0;36mA Nostalgic Trip Back to 1993\x1b[1;36m                        ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+\x1b[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                              BOARD RULES - READ CAREFULLY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+\x1b[1;31m1. NO HACKING\x1b[0;37m - Discussion of illegal computer intrusion is strictly prohibited.
+
+\x1b[1;31m2. NO WAREZ\x1b[0;37m - No pirated software, cracks, or serial numbers allowed.
+
+\x1b[1;31m3. NO NUKING OTHER USERS\x1b[0;37m - Harassment and attacks on other users will result
+   in immediate ban.
+
+\x1b[0;37m4. Be respectful in message boards and private mail.
+
+5. Upload legitimate shareware and freeware only.
+
+6. Maintain your upload/download ratio.
+
+\x1b[1;33mViolation of these rules will result in account suspension or termination
+at SysOp discretion.\x1b[0m
+
+\x1b[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m
+
+\x1b[1;37mPress \x1b[1;36m[N]\x1b[1;37m for New User or \x1b[1;36m[L]\x1b[1;37m to Login:\x1b[0m `
+    const parsed = parser.current.parseANSI(splash)
+    setLines(parsed)
+    currentScreenRef.current = 'splash'
 
     // Cursor blink
     const interval = setInterval(() => {
       setCursorVisible(v => !v)
     }, 500)
 
-    return () => clearInterval(interval)
-  }, [])
+    // Focus input immediately and keep it focused
+    const focusInput = () => {
+      if (inputRef.current) {
+        inputRef.current.focus()
+      }
+    }
+    
+    // Global keyboard handler - ensures input gets focus and receives keypresses
+    const handleGlobalKeyDown = (e) => {
+      // If input isn't focused, focus it
+      if (document.activeElement !== inputRef.current && inputRef.current) {
+        inputRef.current.focus()
+      }
+    }
+    
+    // Focus on mount
+    focusInput()
+    
+    // Focus on any click or keypress
+    window.addEventListener('click', focusInput)
+    window.addEventListener('keydown', focusInput)
+    document.addEventListener('keydown', handleGlobalKeyDown, true)
 
-  useEffect(() => {
-    // Auto-focus input
-    if (inputRef.current) {
-      inputRef.current.focus()
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('click', focusInput)
+      window.removeEventListener('keydown', focusInput)
+      document.removeEventListener('keydown', handleGlobalKeyDown, true)
     }
   }, [])
 
@@ -36,6 +99,11 @@ const Terminal = () => {
       inputRef.current.focus()
     }
   }
+
+  // Update ref whenever currentScreen changes
+  useEffect(() => {
+    currentScreenRef.current = currentScreen
+  }, [currentScreen])
 
   const showSplashScreen = () => {
     const splash = `\x1b[1;36m
@@ -80,6 +148,7 @@ at SysOp discretion.\x1b[0m
 
     const parsed = parser.current.parseANSI(splash)
     setLines(parsed)
+    currentScreenRef.current = 'splash'
   }
 
   const showMainMenu = (handle) => {
@@ -106,13 +175,32 @@ at SysOp discretion.\x1b[0m
     const parsed = parser.current.parseANSI(menu)
     setLines(parsed)
     setCurrentScreen('main')
+    currentScreenRef.current = 'main'
   }
 
   const handleKeyDown = (e) => {
+    console.log('Key pressed:', e.key, 'Current screen:', currentScreen, 'Input value:', input)
+    console.log('Event details:', { key: e.key, code: e.code, keyCode: e.keyCode, target: e.target })
+    
+    // Handle single-key commands (N, L, etc.) immediately
+    if (currentScreen === 'splash') {
+      const key = e.key.toLowerCase()
+      console.log('Splash screen - checking key:', key)
+      if (key === 'n' || key === 'l') {
+        console.log('Matched N or L, calling handleCommand')
+        e.preventDefault()
+        handleCommand(key)
+        return
+      }
+    }
+    
+    // Handle Enter key for text input
     if (e.key === 'Enter') {
       e.preventDefault()
-      handleCommand(input.toLowerCase())
-      setInput('')
+      if (input.trim()) {
+        handleCommand(input.toLowerCase())
+        setInput('')
+      }
     }
   }
 
@@ -163,6 +251,7 @@ at SysOp discretion.\x1b[0m
     const parsed = parser.current.parseANSI(form)
     setLines(parsed)
     setCurrentScreen('newuser')
+    currentScreenRef.current = 'newuser'
   }
 
   const showLoginForm = () => {
@@ -337,9 +426,17 @@ CyberNinja      Miami, FL          2 days ago               178
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
-        onBlur={(e) => e.target.focus()}
+        onBlur={(e) => {
+          // Keep input focused at all times
+          setTimeout(() => e.target.focus(), 0)
+        }}
+        onFocus={(e) => {
+          // Ensure we can capture all keyboard input
+          e.target.select()
+        }}
         maxLength={80}
         autoFocus
+        tabIndex={0}
       />
     </div>
   )

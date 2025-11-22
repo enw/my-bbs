@@ -3,6 +3,7 @@
   src: url('https://cdn.jsdelivr.net/npm/dosvga@1.0.0/dist/Px437_IBM_VGA_8x16.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
+  font-display: swap; /* Prevent blocking and use fallback if font fails to load */
 }
 
 * {

@@ -15,8 +15,12 @@ function createWindow() {
       contextIsolation: true
     },
     title: 'Retro BBS',
-    icon: path.join(__dirname, '../assets/icon.png')
+    icon: path.join(__dirname, '../assets/icon.png'),
+    focusable: true
   })
+  
+  // Ensure window can receive keyboard input
+  mainWindow.setFocusable(true)
 
   // In development, load from Vite dev server
   if (process.env.NODE_ENV === 'development') {
@@ -29,6 +33,12 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null
+  })
+  
+  // Ensure window gets focus when shown
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.focus()
+    mainWindow.show()
   })
 }
 
