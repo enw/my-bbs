@@ -1,3 +1,6 @@
+// Load environment variables
+require('dotenv').config()
+
 const express = require('express')
 const cors = require('cors')
 const session = require('express-session')
@@ -9,24 +12,27 @@ const app = express()
 const PORT = process.env.PORT || 3000
 
 // Database setup
-const db = new Database(path.join(__dirname, '../data/bbs.db'))
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../data/bbs.db')
+const db = new Database(DB_PATH)
 db.pragma('journal_mode = WAL')
 
 // Initialize database tables
 initDatabase()
 
 // Middleware
+const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173'
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: CORS_ORIGIN,
   credentials: true
 }))
 app.use(express.json())
+const SESSION_SECRET = process.env.SESSION_SECRET || 'retro-bbs-secret-1993'
 app.use(session({
-  secret: 'retro-bbs-secret-1993',
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false,
+    secure: process.env.NODE_ENV === 'production',
     maxAge: 3600000 // 1 hour
   }
 }))
@@ -187,8 +193,24 @@ function initDatabase() {
       handle TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       real_name TEXT,
+      real_first_name TEXT,
+      real_last_name TEXT,
+      street_address TEXT,
+      city_state_zip TEXT,
       location TEXT,
       phone TEXT,
+      phone_is_voice INTEGER DEFAULT 1,
+      age INTEGER,
+      gender TEXT,
+      computer_type TEXT,
+      modem_speed TEXT,
+      heard_from TEXT,
+      wants_ansi INTEGER DEFAULT 1,
+      is_long_distance INTEGER DEFAULT 0,
+      wants_graphics INTEGER DEFAULT 1,
+      understands_logging INTEGER DEFAULT 0,
+      agrees_no_abuse INTEGER DEFAULT 0,
+      promises_upload INTEGER DEFAULT 0,
       first_call TEXT,
       last_call TEXT,
       total_calls INTEGER DEFAULT 0,
@@ -199,6 +221,39 @@ function initDatabase() {
       time_bank INTEGER DEFAULT 60
     )
   `)
+  
+  // Add new columns to existing table if they don't exist (migration)
+  const columns = db.pragma('table_info(users)')
+  const columnNames = columns.map(col => col.name)
+  
+  const newColumns = [
+    { name: 'real_first_name', type: 'TEXT' },
+    { name: 'real_last_name', type: 'TEXT' },
+    { name: 'street_address', type: 'TEXT' },
+    { name: 'city_state_zip', type: 'TEXT' },
+    { name: 'phone_is_voice', type: 'INTEGER DEFAULT 1' },
+    { name: 'age', type: 'INTEGER' },
+    { name: 'gender', type: 'TEXT' },
+    { name: 'computer_type', type: 'TEXT' },
+    { name: 'modem_speed', type: 'TEXT' },
+    { name: 'heard_from', type: 'TEXT' },
+    { name: 'wants_ansi', type: 'INTEGER DEFAULT 1' },
+    { name: 'is_long_distance', type: 'INTEGER DEFAULT 0' },
+    { name: 'wants_graphics', type: 'INTEGER DEFAULT 1' },
+    { name: 'understands_logging', type: 'INTEGER DEFAULT 0' },
+    { name: 'agrees_no_abuse', type: 'INTEGER DEFAULT 0' },
+    { name: 'promises_upload', type: 'INTEGER DEFAULT 0' }
+  ]
+  
+  newColumns.forEach(col => {
+    if (!columnNames.includes(col.name)) {
+      try {
+        db.exec(`ALTER TABLE users ADD COLUMN ${col.name} ${col.type}`)
+      } catch (err) {
+        // Column might already exist, ignore
+      }
+    }
+  })
 
   // Message boards
   db.exec(`
@@ -297,15 +352,80 @@ function initDatabase() {
   }
 }
 
-app.listen(PORT, () => {
+// Start HTTP server
+const httpServer = app.listen(PORT, () => {
   console.log(`Retro BBS Server running on http://localhost:${PORT}`)
 })
 
 // Start telnet server if enabled
+let telnetServer = null
 if (process.env.ENABLE_TELNET !== 'false') {
   const { createTelnetServer } = require('./telnetServer')
   const TELNET_PORT = process.env.TELNET_PORT || 2323
-  createTelnetServer(path.join(__dirname, '../data/bbs.db'), TELNET_PORT)
+  telnetServer = createTelnetServer(DB_PATH, TELNET_PORT)
 }
+
+// Graceful shutdown
+const gracefulShutdown = (signal) => {
+  console.log(`\nReceived ${signal}, shutting down gracefully...`)
+  
+  let shutdownComplete = false
+  
+  const finishShutdown = () => {
+    if (shutdownComplete) return
+    shutdownComplete = true
+    
+    // Close database (better-sqlite3 uses synchronous close)
+    try {
+      db.close()
+      console.log('Database closed')
+    } catch (err) {
+      console.error('Error closing database:', err)
+    }
+    
+    process.exit(0)
+  }
+  
+  // Close HTTP server
+  httpServer.close(() => {
+    console.log('HTTP server closed')
+    if (!telnetServer) {
+      finishShutdown()
+    }
+  })
+  
+  // Close telnet server
+  if (telnetServer) {
+    // Close all active telnet connections
+    const activeCount = telnetServer.getActiveSessions()
+    if (activeCount > 0) {
+      console.log(`Closing ${activeCount} active telnet connections...`)
+      telnetServer.closeAllConnections()
+    }
+    
+    telnetServer.close(() => {
+      console.log('Telnet server closed')
+      finishShutdown()
+    })
+    
+    // If no active sessions, finish immediately
+    if (activeCount === 0) {
+      setTimeout(() => finishShutdown(), 100)
+    }
+  } else {
+    finishShutdown()
+  }
+  
+  // Force exit after 10 seconds
+  setTimeout(() => {
+    if (!shutdownComplete) {
+      console.error('Forced shutdown after timeout')
+      process.exit(1)
+    }
+  }, 10000)
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
+process.on('SIGINT', () => gracefulShutdown('SIGINT'))
 
 module.exports = app

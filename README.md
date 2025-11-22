@@ -63,12 +63,47 @@ cd my-bbs
 # Install dependencies
 pnpm install
 
+# Copy environment variables template
+cp .env.example .env
+
+# Edit .env file with your configuration (optional)
+# Defaults work for local development
+
 # Run in development mode (web)
 pnpm dev
 
 # Run as Electron app
 pnpm electron:dev
 ```
+
+### Environment Configuration
+
+The server uses environment variables for configuration. Copy `.env.example` to `.env` and customize as needed:
+
+```bash
+# HTTP Server Configuration
+PORT=3000                    # HTTP server port
+NODE_ENV=development         # Environment mode (development/production)
+
+# Telnet Server Configuration
+TELNET_PORT=2323             # Telnet server port
+ENABLE_TELNET=true           # Enable/disable telnet server
+
+# Database Configuration
+DB_PATH=server/data/bbs.db   # Path to SQLite database file
+
+# Session Configuration
+SESSION_SECRET=your-secret   # Secret key for session encryption (change in production!)
+
+# CORS Configuration
+CORS_ORIGIN=http://localhost:5173  # Allowed origin for CORS (web frontend)
+```
+
+**Production Notes:**
+- Set `NODE_ENV=production` for production
+- Use a strong, random `SESSION_SECRET` in production
+- Update `CORS_ORIGIN` to your production domain
+- Ensure `DB_PATH` points to a persistent location
 
 ### Development Commands
 
@@ -170,6 +205,7 @@ Add files to the library by placing them in `assets/files/` and updating the dat
 ## 🎯 Roadmap
 
 - [ ] Full authentication flow with password recovery
+- [ ] More authentic modem sounds
 - [ ] Complete message board implementation with threading
 - [ ] File upload/download with actual file storage
 - [ ] Private messaging system
@@ -177,7 +213,6 @@ Add files to the library by placing them in `assets/files/` and updating the dat
 - [ ] MS-DOS executable ANSI animations
 - [ ] SysOp admin panel
 - [ ] Multi-node support (multiple simultaneous users)
-- [ ] More authentic modem sounds
 - [ ] QWK mail packet support
 - [ ] FidoNet-style inter-BBS messaging
 
@@ -203,6 +238,61 @@ Inspired by the golden era of BBSs (1985-1995), including legendary systems like
 - Channel 1
 
 Special thanks to all the SysOps who kept the BBS scene alive in the dial-up era!
+
+## 🔧 Troubleshooting
+
+### Telnet Connection Issues
+
+**Can't connect via telnet:**
+- Ensure telnet server is enabled: `ENABLE_TELNET=true` in `.env`
+- Check if port is available: `lsof -i :2323` (or your `TELNET_PORT`)
+- Verify firewall allows the telnet port
+- Try connecting with: `telnet localhost 2323` or `nc localhost 2323`
+
+**Connection timeout:**
+- Default timeout is 5 minutes of inactivity
+- Type any character to reset the timeout
+- This is normal behavior to prevent idle connections
+
+**Database errors in telnet:**
+- Check database file exists at `DB_PATH`
+- Ensure database file is readable/writable
+- Run `node server/src/seedData.js` to initialize database if needed
+
+### Server Issues
+
+**Port already in use:**
+```bash
+# Find process using port 3000
+lsof -ti:3000 | xargs kill
+
+# Find process using telnet port
+lsof -ti:2323 | xargs kill
+```
+
+**Database not found:**
+- Database is created automatically on first run
+- Or run: `node server/src/seedData.js` to create and seed database
+- Check `DB_PATH` in `.env` points to correct location
+
+**Session issues:**
+- Clear browser cookies if sessions aren't working
+- Ensure `SESSION_SECRET` is set (required for production)
+- Check CORS settings if API calls fail from browser
+
+### Development vs Production
+
+**Development:**
+- Uses default ports (3000 for HTTP, 2323 for telnet)
+- CORS allows `http://localhost:5173`
+- Session cookies not secure (HTTP only)
+
+**Production:**
+- Set `NODE_ENV=production`
+- Use strong `SESSION_SECRET`
+- Update `CORS_ORIGIN` to your domain
+- Consider using HTTPS (requires reverse proxy like Nginx)
+- Use process manager (PM2, systemd) for auto-restart
 
 ## 📞 Support
 
