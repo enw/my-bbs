@@ -7,6 +7,7 @@ const Terminal = () => {
   const [input, setInput] = useState('')
   const [cursorVisible, setCursorVisible] = useState(true)
   const [currentScreen, setCurrentScreen] = useState('splash')
+  const [newUserHandle, setNewUserHandle] = useState('')
   const terminalRef = useRef(null)
   const inputRef = useRef(null)
   const parser = useRef(new ANSIParser())
@@ -197,8 +198,16 @@ at SysOp discretion.\x1b[0m
     // Handle Enter key for text input
     if (e.key === 'Enter') {
       e.preventDefault()
-      if (input.trim()) {
-        handleCommand(input.toLowerCase())
+      const trimmedInput = input.trim()
+      if (trimmedInput) {
+        handleCommand(trimmedInput)
+        // Only clear input if not on confirmation screen
+        if (currentScreen !== 'newuser-confirm') {
+          setInput('')
+        }
+      } else if (currentScreen === 'newuser-confirm') {
+        // Allow Enter on confirmation screen even with empty input
+        handleCommand('')
         setInput('')
       }
     }
@@ -211,6 +220,23 @@ at SysOp discretion.\x1b[0m
       } else if (cmd === 'l') {
         showLoginForm()
       }
+    } else if (currentScreen === 'newuser') {
+      // Handle new user form input
+      // For now, just show a confirmation and go to main menu
+      // In a real implementation, this would save the user data
+      if (cmd.trim()) {
+        setNewUserHandle(cmd) // Store the username
+        addLine(`\x1b[1;32mThank you! Your handle "${cmd}" has been registered.\x1b[0m`)
+        addLine('\x1b[1;37mPress Enter to continue...\x1b[0m')
+        setCurrentScreen('newuser-confirm')
+        currentScreenRef.current = 'newuser-confirm'
+        setInput('') // Clear input after storing
+      }
+    } else if (currentScreen === 'newuser-confirm') {
+      // After confirmation, go to main menu
+      showMainMenu(newUserHandle || 'NewUser')
+      setInput('')
+      setNewUserHandle('') // Clear stored handle
     } else if (currentScreen === 'main') {
       switch(cmd) {
         case 'm':
@@ -252,6 +278,7 @@ at SysOp discretion.\x1b[0m
     setLines(parsed)
     setCurrentScreen('newuser')
     currentScreenRef.current = 'newuser'
+    setInput('') // Clear any previous input
   }
 
   const showLoginForm = () => {
@@ -417,6 +444,12 @@ CyberNinja      Miami, FL          2 days ago               178
             ))}
           </div>
         ))}
+        {/* Display current input value on screen */}
+        {input && (
+          <div className="terminal-line">
+            <span style={{ color: '#aaa' }}>{input}</span>
+          </div>
+        )}
         <span className={`cursor ${cursorVisible ? 'visible' : ''}`}>_</span>
       </div>
       <input
@@ -431,8 +464,7 @@ CyberNinja      Miami, FL          2 days ago               178
           setTimeout(() => e.target.focus(), 0)
         }}
         onFocus={(e) => {
-          // Ensure we can capture all keyboard input
-          e.target.select()
+          // Don't select all text on focus - let user see their typing
         }}
         maxLength={80}
         autoFocus
