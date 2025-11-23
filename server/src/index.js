@@ -38,6 +38,28 @@ app.use(session({
 }))
 
 // Routes
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Retro BBS API Server',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      register: 'POST /api/users/register',
+      login: 'POST /api/users/login',
+      boards: 'GET /api/boards',
+      messages: 'GET /api/boards/:id/messages',
+      files: 'GET /api/files',
+      users: 'GET /api/users'
+    },
+    telnet: {
+      enabled: process.env.ENABLE_TELNET !== 'false',
+      port: process.env.TELNET_PORT || 2323,
+      connect: `telnet localhost ${process.env.TELNET_PORT || 2323} or nc localhost ${process.env.TELNET_PORT || 2323}`
+    },
+    frontend: process.env.CORS_ORIGIN || 'http://localhost:5173'
+  })
+})
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Retro BBS Server Running' })
 })
