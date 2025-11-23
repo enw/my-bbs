@@ -50,8 +50,8 @@ Organized categories matching the 1993 era:
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ and pnpm
-- Modern web browser (for web mode)
+- Node.js 18+ and pnpm (for development)
+- Modern web browser (works entirely in browser - no server needed!)
 
 ### Installation
 
@@ -63,18 +63,41 @@ cd my-bbs
 # Install dependencies
 pnpm install
 
-# Copy environment variables template
+# Copy environment variables template (optional, for server mode)
 cp .env.example .env
-
-# Edit .env file with your configuration (optional)
-# Defaults work for local development
 
 # Run in development mode (web)
 pnpm dev
 
 # Run as Electron app
 pnpm electron:dev
+
+# Build standalone browser-only version
+pnpm build:standalone
 ```
+
+### Browser-Only Mode
+
+The BBS can run **entirely in your browser** without any server! 
+
+- **Automatic Detection**: The app automatically detects if a server is available and falls back to browser-only mode
+- **No Server Required**: Works offline, can be deployed as a static site
+- **Local Storage**: Uses IndexedDB to persist your BBS data in the browser
+- **Full Features**: All BBS features work in browser mode (registration, login, message boards, file areas, etc.)
+
+**Deploy as Static Site:**
+```bash
+# Build for production
+pnpm build:standalone
+
+# Deploy the 'dist' folder to:
+# - GitHub Pages
+# - Netlify
+# - Vercel
+# - Any static hosting service
+```
+
+The browser-only version uses SQL.js (SQLite compiled to WebAssembly) for database storage, providing the same functionality as the server version but running entirely client-side.
 
 ### Environment Configuration
 
@@ -134,12 +157,17 @@ my-bbs/
 ├── client/          # React frontend (Vite)
 │   ├── src/
 │   │   ├── components/   # Terminal, ModemConnect, etc.
-│   │   ├── lib/          # ANSI parser, utilities
+│   │   ├── lib/          # ANSI parser, BBS engine, browser DB
+│   │   │   ├── ansiParser.js
+│   │   │   ├── bbsEngine.js      # Browser BBS engine
+│   │   │   ├── browserDB.js      # SQL.js database wrapper
+│   │   │   └── connectionManager.js  # Server/browser detection
 │   │   └── styles/       # CSS files
 │   └── index.html
-├── server/          # Node.js/Express backend
+├── server/          # Node.js/Express backend (optional)
 │   ├── src/
 │   │   ├── index.js      # Main server file
+│   │   ├── telnetServer.js  # Telnet server
 │   │   └── routes/       # API routes
 │   └── data/             # SQLite database
 ├── electron/        # Electron main process
@@ -151,13 +179,33 @@ my-bbs/
 └── shared/          # Shared types/utilities
 ```
 
+### Connection Modes
+
+The BBS supports two connection modes:
+
+1. **Server Mode** (Optional)
+   - Backend API on port 3000
+   - Telnet server on port 2323
+   - SQLite database on server
+   - Full multi-user support
+
+2. **Browser-Only Mode** (Default Fallback)
+   - No server required
+   - SQL.js (SQLite in browser)
+   - IndexedDB for persistence
+   - Works offline
+   - Can be deployed as static site
+
+The app automatically detects server availability and falls back to browser mode if the server is unavailable.
+
 ## 🎮 Usage
 
 ### Web Browser
-1. Run `pnpm dev`
+1. Run `pnpm dev` (or just open the built files)
 2. Open http://localhost:5173
 3. Watch the modem connection sequence
 4. Press `[N]` for New User or `[L]` to Login
+5. **No server needed!** The BBS runs entirely in your browser using SQL.js
 
 ### Desktop App (Electron)
 1. Run `pnpm electron:dev`

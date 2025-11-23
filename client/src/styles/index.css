@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
 @font-face {
   font-family: 'Perfect DOS VGA 437';
   src: url('https://cdn.jsdelivr.net/npm/dosvga@1.0.0/dist/Px437_IBM_VGA_8x16.woff2') format('woff2');
@@ -14,7 +16,7 @@
 
 body {
   margin: 0;
-  font-family: 'Perfect DOS VGA 437', 'Courier New', monospace;
+  font-family: 'Perfect DOS VGA 437', 'VT323', monospace;
   -webkit-font-smoothing: none;
   -moz-osx-font-smoothing: grayscale;
   background: #000;

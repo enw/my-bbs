@@ -8,6 +8,7 @@
     "dev:server": "nodemon server/src/index.js",
     "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
     "build:client": "vite build",
+    "build:standalone": "vite build",
     "electron:dev": "concurrently \"npm run dev:client\" \"npm run dev:server\" \"wait-on http://localhost:5173 && NODE_ENV=development electron .\"",
     "electron:build": "npm run build:client && electron-builder",
     "server": "node server/src/index.js"
@@ -29,6 +30,7 @@
     "express-session": "^1.18.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "sql.js": "^1.13.0",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
