@@ -27,8 +27,17 @@ const Terminal = () => {
         // Create BBS engine with output callback
         const handleOutput = (data) => {
           if (!mounted) return
+          
           const parsed = parser.current.parseANSI(data)
-          setLines(parsed)
+          
+          setLines(prev => {
+            // Check if the data contains the ANSI Clear Screen code
+            if (data.includes('\x1b[2J')) {
+              return parsed
+            }
+            // Otherwise append to existing lines
+            return [...prev, ...parsed]
+          })
         }
 
         const handleLogoff = () => {
@@ -121,8 +130,15 @@ const Terminal = () => {
       
       // Allow empty input on confirmation screens
       if (trimmedInput || engine.currentScreen === 'newuser-confirm') {
-        engine.processCommand(trimmedInput || '')
+        // Add the user's input to the display before clearing it
+        if (trimmedInput) {
+          const inputLine = parser.current.parseANSI(trimmedInput)
+          setLines(prev => [...prev, ...inputLine])
+        }
+        
+        // Clear input and send command
         setInput('')
+        engine.processCommand(trimmedInput || '')
       }
     }
   }
@@ -145,10 +161,14 @@ const Terminal = () => {
                 {char.char}
               </span>
             ))}
+            {/* Render input at the end of the very last line */}
+            {lineIdx === lines.length - 1 && input && (
+              <span style={{ color: '#aaa' }}>{input}</span>
+            )}
           </div>
         ))}
-        {/* Display current input value on screen */}
-        {input && (
+        {/* Fallback if there are no lines yet */}
+        {lines.length === 0 && input && (
           <div className="terminal-line">
             <span style={{ color: '#aaa' }}>{input}</span>
           </div>
