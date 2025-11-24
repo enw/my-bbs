@@ -98,12 +98,12 @@ at SysOp discretion.\x1b[0m
 
 \x1b[1;37mWelcome back, \x1b[1;32m${handle}\x1b[1;37m!\x1b[0m
 
-\x1b[1;36m[\x1b[1;37mM\x1b[1;36m]\x1b[0;37m essage Boards
+\x1b[1;36m[\x1b[1;37mB\x1b[1;36m]\x1b[0;37m oards
 \x1b[1;36m[\x1b[1;37mF\x1b[1;36m]\x1b[0;37m ile Areas
-\x1b[1;36m[\x1b[1;37mP\x1b[1;36m]\x1b[0;37m rivate Mail
+\x1b[1;36m[\x1b[1;37mM\x1b[1;36m]\x1b[0;37m ail
 \x1b[1;36m[\x1b[1;37mU\x1b[1;36m]\x1b[0;37m ser List
 \x1b[1;36m[\x1b[1;37mY\x1b[1;36m]\x1b[0;37m our Statistics
-\x1b[1;36m[\x1b[1;37mA\x1b[1;36m]\x1b[0;37m gent Chat
+\x1b[1;36m[\x1b[1;37mP\x1b[1;36m]\x1b[0;37m age the SysOp
 \x1b[1;36m[\x1b[1;37mC\x1b[1;36m]\x1b[0;37m onfig
 \x1b[1;36m[\x1b[1;37mL\x1b[1;36m]\x1b[0;37m ogoff
 
@@ -135,13 +135,13 @@ at SysOp discretion.\x1b[0m
       }
     } else if (currentScreen === 'main') {
       switch(cmd) {
-        case 'm':
+        case 'b':
           showMessageBoards()
           break
         case 'f':
           showFileAreas()
           break
-        case 'p':
+        case 'm':
           showPrivateMail()
           break
         case 'u':
@@ -150,7 +150,7 @@ at SysOp discretion.\x1b[0m
         case 'y':
           showStats()
           break
-        case 'a':
+        case 'p':
           setShowAgentChat(true)
           break
         case 'c':

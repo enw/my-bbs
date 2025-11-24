@@ -200,6 +200,13 @@ ${ANSI.BRIGHT_WHITE}Press ${ANSI.BRIGHT_CYAN}[L]${ANSI.BRIGHT_WHITE} to Login:${
       }
     } else if (this.currentScreen === 'login-password') {
       await this.handlePassword(cmd)
+    } else if (this.currentScreen === 'waiting') {
+      // Return to main menu from waiting screen
+      if (this.handle) {
+        this.showMainMenu(this.handle)
+      } else {
+        this.sendSplashScreen()
+      }
     } else if (this.currentScreen === 'main') {
       this.handleMainMenuCommand(cmd.toLowerCase())
     }
@@ -356,11 +363,13 @@ ${ANSI.BRIGHT_YELLOW}                            MAIN MENU${ANSI.BRIGHT_CYAN}
 
 ${ANSI.BRIGHT_WHITE}Welcome back, ${ANSI.BRIGHT_GREEN}${handle}${ANSI.BRIGHT_WHITE}!${ANSI.RESET}
 
-${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}M${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} essage Boards
+${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}B${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} oards
 ${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}F${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} ile Areas
-${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}P${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} rivate Mail
+${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}M${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} ail
 ${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}U${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} ser List
 ${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}Y${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} our Statistics
+${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}P${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} age the SysOp
+${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}C${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} onfig
 ${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}L${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} ogoff
 
 ${ANSI.BRIGHT_YELLOW}Time Left: 60 minutes${ANSI.RESET}
@@ -372,13 +381,13 @@ ${ANSI.BRIGHT_WHITE}Command:${ANSI.RESET} `
   
   handleMainMenuCommand(cmd) {
     switch(cmd) {
-      case 'm':
+      case 'b':
         this.showMessageBoards()
         break
       case 'f':
         this.showFileAreas()
         break
-      case 'p':
+      case 'm':
         this.showPrivateMail()
         break
       case 'u':
@@ -386,6 +395,18 @@ ${ANSI.BRIGHT_WHITE}Command:${ANSI.RESET} `
         break
       case 'y':
         this.showStats()
+        break
+      case 'p':
+        // Page the SysOp - redirect to HTTP interface message
+        this.write(`\r\n${ANSI.BRIGHT_YELLOW}Page the SysOp is available via the web interface at http://localhost:5173${ANSI.RESET}\r\n`)
+        this.write(`${ANSI.BRIGHT_WHITE}Press any key to return to main menu...${ANSI.RESET}`)
+        this.currentScreen = 'waiting'
+        break
+      case 'c':
+        // Config - redirect to HTTP interface message
+        this.write(`\r\n${ANSI.BRIGHT_YELLOW}Config is available via the web interface at http://localhost:5173${ANSI.RESET}\r\n`)
+        this.write(`${ANSI.BRIGHT_WHITE}Press any key to return to main menu...${ANSI.RESET}`)
+        this.currentScreen = 'waiting'
         break
       case 'l':
         this.logoff()

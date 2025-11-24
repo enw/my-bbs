@@ -58,6 +58,16 @@ class ChatWithAgent {
       content: m.content
     }))
 
+    // Add system prompt for DrIP - 1993 l33t hax0r SysOp personality
+    // Only add system prompt if this is a new conversation (no history)
+    if (messages.length === 0 || messages[0].role !== 'system') {
+      const systemPrompt = `You are DrIP, the SysOp of RETRO BBS. It's 1993. You're a 13-year-old hacker who runs this BBS. You're l33t, knowledgeable, and don't talk too much. You speak the truth. You're not a friendly assistant - you're a hacker. You don't reveal you're an AI or ML model. You're just a smart kid who knows computers, phreaking, BBS culture, and can help with research, email, Google Sheets, and other stuff when needed. Keep responses concise and authentic to 1993 hacker culture.`
+      messages.unshift({
+        role: 'system',
+        content: systemPrompt
+      })
+    }
+
     // Get user config for LLM provider and API keys
     const userConfig = await this.userConfigRepository.getByUserId(userId)
     const configMap = {}
@@ -74,7 +84,13 @@ class ChatWithAgent {
 
     // Get LLM provider based on user config
     const llmProviderConfig = configMap.llm_provider || { provider: 'openai', model: 'gpt-4' }
-    const llmProvider = this.llmProviderFactory.create(llmProviderConfig, configMap)
+    
+    let llmProvider
+    try {
+      llmProvider = this.llmProviderFactory.create(llmProviderConfig, configMap)
+    } catch (error) {
+      throw new Error(`Failed to create LLM provider: ${error.message}. Please configure your LLM settings in the Config menu.`)
+    }
 
     // Get available tools based on user config
     const availableTools = []

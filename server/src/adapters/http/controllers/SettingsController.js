@@ -4,7 +4,7 @@ class SettingsController {
   constructor(saveUserConfig, getUserConfig, testConnection) {
     this.saveUserConfig = saveUserConfig
     this.getUserConfig = getUserConfig
-    this.testConnection = testConnection
+    this.testConnectionUseCase = testConnection
   }
 
   // Get userId from session or use default (1) for localhost development
@@ -81,7 +81,7 @@ class SettingsController {
       const userId = this.getUserId(req)
 
       const { provider, config } = req.body
-      const result = await this.testConnection.execute(userId, provider, config)
+      const result = await this.testConnectionUseCase.execute(userId, provider, config)
       res.json(result)
     } catch (error) {
       console.error('Test connection error:', error)

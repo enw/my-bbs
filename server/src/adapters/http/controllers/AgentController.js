@@ -5,11 +5,16 @@ class AgentController {
     this.deleteConversationUseCase = deleteConversation
   }
 
+  // Get userId from session or use default (1) for localhost development
+  // WARNING: This is insecure and should only be used for localhost development
+  getUserId(req) {
+    return req.session.userId || 1
+  }
+
   async chat(req, res) {
     try {
-      if (!req.session.userId) {
-        return res.status(401).json({ error: 'Not authenticated' })
-      }
+      // Authentication disabled for localhost development
+      const userId = this.getUserId(req)
 
       const { message, conversationId } = req.body
 
@@ -18,7 +23,7 @@ class AgentController {
       }
 
       const result = await this.chatWithAgent.execute({
-        userId: req.session.userId,
+        userId,
         message,
         conversationId
       })
@@ -32,11 +37,10 @@ class AgentController {
 
   async getConversations(req, res) {
     try {
-      if (!req.session.userId) {
-        return res.status(401).json({ error: 'Not authenticated' })
-      }
+      // Authentication disabled for localhost development
+      const userId = this.getUserId(req)
 
-      const conversations = await this.getConversationsUseCase.execute(req.session.userId)
+      const conversations = await this.getConversationsUseCase.execute(userId)
       res.json(conversations)
     } catch (error) {
       console.error('Get conversations error:', error)
@@ -46,9 +50,8 @@ class AgentController {
 
   async getConversationMessages(req, res) {
     try {
-      if (!req.session.userId) {
-        return res.status(401).json({ error: 'Not authenticated' })
-      }
+      // Authentication disabled for localhost development
+      const userId = this.getUserId(req)
 
       const { id } = req.params
       // This would need a GetConversationMessages use case
@@ -62,12 +65,11 @@ class AgentController {
 
   async deleteConversation(req, res) {
     try {
-      if (!req.session.userId) {
-        return res.status(401).json({ error: 'Not authenticated' })
-      }
+      // Authentication disabled for localhost development
+      const userId = this.getUserId(req)
 
       const { id } = req.params
-      await this.deleteConversationUseCase.execute(req.session.userId, parseInt(id))
+      await this.deleteConversationUseCase.execute(userId, parseInt(id))
       res.json({ success: true })
     } catch (error) {
       if (error.message === 'Conversation not found') {

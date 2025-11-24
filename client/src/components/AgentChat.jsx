@@ -23,7 +23,11 @@ const AgentChat = ({ onBack }) => {
     if (terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight
     }
-  }, [messages])
+    // Refocus input after messages update (including after response)
+    if (inputRef.current && !isLoading) {
+      inputRef.current.focus()
+    }
+  }, [messages, isLoading])
 
   const loadConversations = async () => {
     try {
@@ -63,7 +67,8 @@ const AgentChat = ({ onBack }) => {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to get response')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to get response`)
       }
 
       const data = await response.json()
@@ -74,7 +79,7 @@ const AgentChat = ({ onBack }) => {
       }
 
       // Add assistant response
-      const assistantMsg = `\x1b[1;36mAgent:\x1b[0m ${data.response}`
+      const assistantMsg = `\x1b[1;36mDrIP:\x1b[0m ${data.response}`
       const parsedAssistant = parser.current.parseANSI(assistantMsg)
       setMessages(prev => [...prev, ...parsedAssistant])
     } catch (error) {
@@ -83,6 +88,12 @@ const AgentChat = ({ onBack }) => {
       setMessages(prev => [...prev, ...parsedError])
     } finally {
       setIsLoading(false)
+      // Refocus input after response
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus()
+        }
+      }, 100)
     }
   }
 
@@ -99,11 +110,12 @@ const AgentChat = ({ onBack }) => {
     const header = `\x1b[1;36m
 ═══════════════════════════════════════════════════════════════════════════
 
-                            AGENT CHAT
+                         PAGE THE SYSOP
 
 ═══════════════════════════════════════════════════════════════════════════\x1b[0m
 
-\x1b[1;33mChat with an AI agent that can help you with research, email, Google Sheets, and more!\x1b[0m
+\x1b[1;33mSend messages to DrIP's pager. He'll respond as soon as he can.\x1b[0m
+\x1b[1;31mResponses may take longer during school hours.\x1b[0m
 
 \x1b[1;37mType your message and press Enter. Press ESC to return to main menu.\x1b[0m
 
@@ -140,7 +152,7 @@ const AgentChat = ({ onBack }) => {
         ))}
         {isLoading && (
           <div className="terminal-line">
-            <span style={{ color: '#00ffff' }}>Agent is thinking...</span>
+            <span style={{ color: '#00ffff' }}>DrIP is thinking...</span>
           </div>
         )}
         <span className="cursor visible">_</span>
