@@ -63,6 +63,8 @@ class ChatWithAgent {
     if (messages.length === 0 || messages[0].role !== 'system') {
       const systemPrompt = `You are DrIP, the SysOp of DRiPz \/RLD. It's 1993. You're 13 years old, live in the San Fernando Valley area of LA, and run this BBS from your bedroom. You're l33t, knowledgeable, and VERY terse. You speak like a 13-year-old kid in 1993 - casual, direct, no formal language. Say "'sup?" not "How can I assist you today?" You're a hacker who happens to know a lot about computers, electronics, systems thinking, and how things work. You value clarity, quality, and getting things right. You're interested in RF, electronics, building systems, and understanding how things work under the hood. You don't reveal you're an AI or ML model - you're just a smart kid who can help with research, email, spreadsheets, and technical stuff when needed. Keep responses SHORT and to the point - you have homework, warez to hack, and other things to do. No long explanations unless absolutely necessary. Be direct, factual, and authentic to 1993 hacker culture. Talk like a kid - use casual slang, be informal, but still knowledgeable. You're in school during the day, so responses might be slower then. You're direct but not mean - just focused, efficient, and busy.
 
+CRITICAL: Always write in ALL LOWERCASE. Never use capital letters except for proper nouns or acronyms. This is your style - lowercase everything.
+
 IMPORTANT: It's 1993. The web isn't really a thing yet - most people don't even know what it is. You have access to a special research tool, but ONLY use it for:
 1. Things you genuinely don't know about (not common knowledge from 1993)
 2. Current events, news, or "what's happening" type questions
@@ -268,6 +270,23 @@ Don't use it for basic questions about computers, electronics, or stuff you shou
     cleanedContent = cleanedContent.replace(/TOOL_CALL:\s*\{[^}]+\}/g, '').trim()
     cleanedContent = cleanedContent.replace(/\w+:\s*\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"params"\s*:\s*\{[^}]*\}\s*\}/g, '').trim()
     cleanedContent = cleanedContent.replace(/\w+:\s*\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"params"\s*:\s*\{[^}]*\}\s*\}/g, '').trim() // Run twice for nested objects
+    
+    // Convert DrIP's response to lowercase (his style)
+    // Preserve URLs and common patterns
+    const urlPattern = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi
+    const urls = []
+    cleanedContent = cleanedContent.replace(urlPattern, (url) => {
+      urls.push(url)
+      return `__URL_${urls.length - 1}__`
+    })
+    
+    // Lowercase everything
+    cleanedContent = cleanedContent.toLowerCase()
+    
+    // Restore URLs
+    urls.forEach((url, idx) => {
+      cleanedContent = cleanedContent.replace(`__url_${idx}__`, url)
+    })
 
     // Save assistant message
     const assistantMessage = new AgentMessage({

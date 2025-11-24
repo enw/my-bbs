@@ -9,6 +9,7 @@ const AgentChat = ({ onBack }) => {
   const [conversations, setConversations] = useState([])
   const [currentConversationId, setCurrentConversationId] = useState(null)
   const [terminalWidth, setTerminalWidth] = useState(80)
+  const [scrollPosition, setScrollPosition] = useState({ top: 0, height: 0, visible: false })
   const terminalRef = useRef(null)
   const inputRef = useRef(null)
   const parser = useRef(new ANSIParser())
@@ -51,6 +52,29 @@ const AgentChat = ({ onBack }) => {
       inputRef.current.focus()
     }
   }, [messages, isLoading, input])
+
+  // Calculate scrollbar position for ANSI scrollbar
+  useEffect(() => {
+    const updateScrollbar = () => {
+      if (terminalRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } = terminalRef.current
+        const scrollable = scrollHeight > clientHeight
+        if (scrollable) {
+          const thumbHeight = Math.max((clientHeight / scrollHeight) * clientHeight, 2)
+          const thumbTop = (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - thumbHeight)
+          setScrollPosition({ top: thumbTop, height: thumbHeight, visible: true })
+        } else {
+          setScrollPosition({ top: 0, height: 0, visible: false })
+        }
+      }
+    }
+    
+    if (terminalRef.current) {
+      terminalRef.current.addEventListener('scroll', updateScrollbar)
+      updateScrollbar()
+      return () => terminalRef.current?.removeEventListener('scroll', updateScrollbar)
+    }
+  }, [messages])
 
   const loadConversations = async () => {
     try {
@@ -161,8 +185,8 @@ const AgentChat = ({ onBack }) => {
   }
 
   return (
-    <div className="terminal" ref={terminalRef} onClick={handleTerminalClick}>
-      <div className="terminal-screen" style={{ width: `${terminalWidth}ch`, maxWidth: `${terminalWidth}ch` }}>
+    <div className="terminal" onClick={handleTerminalClick}>
+      <div className="terminal-screen" ref={terminalRef} style={{ width: `${terminalWidth}ch`, maxWidth: `${terminalWidth}ch` }}>
         {messages.map((line, lineIdx) => (
           <div key={lineIdx} className="terminal-line" style={{ maxWidth: `${terminalWidth}ch` }}>
             {line.map((char, charIdx) => (
@@ -185,10 +209,25 @@ const AgentChat = ({ onBack }) => {
             <span style={{ color: '#00ffff' }}>Paging DrIP...</span>
           </div>
         )}
-        <div className="terminal-line terminal-input-line">
-          <span style={{ color: '#aaa' }}>{input}</span>
-          <span className={`cursor ${!isLoading ? 'visible' : ''}`}>_</span>
-        </div>
+        {scrollPosition.visible && (
+          <div className="ansi-scrollbar" style={{ paddingTop: '20px' }}>
+            <div className="ansi-scrollbar-track">
+              <div className="ansi-scrollbar-thumb" style={{ 
+                marginTop: `${scrollPosition.top}px`,
+                height: `${scrollPosition.height}px`,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center'
+              }}>
+                {'█'.repeat(Math.max(1, Math.floor(scrollPosition.height / 1.2)))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="terminal-input-line">
+        <span style={{ color: '#aaa' }}>{input}</span>
+        <span className={`cursor ${!isLoading ? 'visible' : ''}`}>_</span>
       </div>
       <input
         ref={inputRef}
@@ -198,7 +237,7 @@ const AgentChat = ({ onBack }) => {
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={(e) => e.target.focus()}
-        maxLength={500}
+        maxLength={terminalWidth}
         autoFocus
         disabled={isLoading}
         placeholder=""

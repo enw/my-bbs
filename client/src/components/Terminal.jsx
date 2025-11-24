@@ -46,6 +46,31 @@ const Terminal = () => {
     }
   }, [lines, input, currentScreen])
 
+  // Calculate scrollbar position for ANSI scrollbar
+  const [scrollPosition, setScrollPosition] = useState({ top: 0, height: 0, visible: false })
+  
+  useEffect(() => {
+    const updateScrollbar = () => {
+      if (terminalRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } = terminalRef.current
+        const scrollable = scrollHeight > clientHeight
+        if (scrollable) {
+          const thumbHeight = Math.max((clientHeight / scrollHeight) * clientHeight, 2)
+          const thumbTop = (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - thumbHeight)
+          setScrollPosition({ top: thumbTop, height: thumbHeight, visible: true })
+        } else {
+          setScrollPosition({ top: 0, height: 0, visible: false })
+        }
+      }
+    }
+    
+    if (terminalRef.current) {
+      terminalRef.current.addEventListener('scroll', updateScrollbar)
+      updateScrollbar()
+      return () => terminalRef.current?.removeEventListener('scroll', updateScrollbar)
+    }
+  }, [lines])
+
   const loadTerminalWidth = async () => {
     try {
       const response = await fetch('/api/settings', {
@@ -378,8 +403,8 @@ CyberNinja      Miami, FL          2 days ago               178
   }
 
   return (
-    <div className="terminal" ref={terminalRef} onClick={handleTerminalClick}>
-      <div className="terminal-screen" style={{ width: `${terminalWidth}ch`, maxWidth: `${terminalWidth}ch` }}>
+    <div className="terminal" onClick={handleTerminalClick}>
+      <div className="terminal-screen" ref={terminalRef} style={{ width: `${terminalWidth}ch`, maxWidth: `${terminalWidth}ch` }}>
         {lines.map((line, lineIdx) => (
           <div key={lineIdx} className="terminal-line" style={{ maxWidth: `${terminalWidth}ch` }}>
             {line.map((char, charIdx) => (
@@ -397,10 +422,25 @@ CyberNinja      Miami, FL          2 days ago               178
             ))}
           </div>
         ))}
-        <div className="terminal-line terminal-input-line">
-          <span style={{ color: '#aaa' }}>{input}</span>
-          <span className={`cursor ${cursorVisible ? 'visible' : ''}`}>_</span>
-        </div>
+        {scrollPosition.visible && (
+          <div className="ansi-scrollbar" style={{ paddingTop: '20px' }}>
+            <div className="ansi-scrollbar-track">
+              <div className="ansi-scrollbar-thumb" style={{ 
+                marginTop: `${scrollPosition.top}px`,
+                height: `${scrollPosition.height}px`,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center'
+              }}>
+                {'█'.repeat(Math.max(1, Math.floor(scrollPosition.height / 1.2)))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="terminal-input-line">
+        <span style={{ color: '#aaa' }}>{input}</span>
+        <span className={`cursor ${cursorVisible ? 'visible' : ''}`}>_</span>
       </div>
       <input
         ref={inputRef}
@@ -410,7 +450,7 @@ CyberNinja      Miami, FL          2 days ago               178
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         onBlur={(e) => e.target.focus()}
-        maxLength={80}
+        maxLength={terminalWidth}
         autoFocus
       />
     </div>

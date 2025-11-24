@@ -3,19 +3,21 @@
   height: 100vh;
   background: #000;
   color: #aaa;
-  padding: 20px;
+  padding: 0;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  justify-content: flex-end;
   align-items: flex-start;
   position: relative;
   font-family: 'Perfect DOS VGA 437', monospace;
   font-size: 16px;
   line-height: 1.2;
+  overflow: hidden;
 }
 
 .terminal-screen {
   /* Width set dynamically via inline style (80ch or 132ch) */
-  height: calc(24 * 1.2em); /* 24 lines tall */
+  flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   white-space: pre-wrap;
@@ -23,7 +25,7 @@
   overflow-wrap: break-word;
   font-family: 'Perfect DOS VGA 437', monospace;
   background: #000;
-  padding: 0;
+  padding: 20px;
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -31,6 +33,13 @@
   -webkit-user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
+  /* Hide default scrollbar */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.terminal-screen::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .terminal-line {
@@ -56,8 +65,16 @@
   display: flex;
   align-items: baseline;
   min-height: 1.2em;
-  padding-top: 2px;
+  padding: 10px 20px;
   flex-shrink: 0;
+  background: #000;
+  border-top: 1px solid #333;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
 }
 
 .cursor {
@@ -79,22 +96,52 @@
   50%, 100% { opacity: 0; }
 }
 
-/* Scrollbar styling for retro look */
-.terminal::-webkit-scrollbar {
-  width: 16px;
+/* ANSI-style scrollbar using CSS */
+.terminal-screen {
+  position: relative;
 }
 
-.terminal::-webkit-scrollbar-track {
+.terminal-screen::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 1ch;
   background: #000;
+  pointer-events: none;
+  z-index: 1;
 }
 
-.terminal::-webkit-scrollbar-thumb {
-  background: #555;
-  border: 2px solid #000;
+/* Create ANSI scrollbar effect with characters */
+.ansi-scrollbar {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 1ch;
+  font-family: 'Perfect DOS VGA 437', monospace;
+  font-size: 16px;
+  line-height: 1.2em;
+  color: #555;
+  pointer-events: none;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-top: 20px;
 }
 
-.terminal::-webkit-scrollbar-thumb:hover {
-  background: #777;
+.ansi-scrollbar-track {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  align-items: center;
+}
+
+.ansi-scrollbar-thumb {
+  color: #0ff;
+  flex-shrink: 0;
 }
 
 /* Settings form styling */
