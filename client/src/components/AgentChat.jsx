@@ -152,7 +152,7 @@ const AgentChat = ({ onBack }) => {
         ))}
         {isLoading && (
           <div className="terminal-line">
-            <span style={{ color: '#00ffff' }}>DrIP is thinking...</span>
+            <span style={{ color: '#00ffff' }}>Paging DrIP...</span>
           </div>
         )}
         <span className="cursor visible">_</span>
