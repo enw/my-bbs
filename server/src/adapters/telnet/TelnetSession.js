@@ -1,6 +1,4 @@
 const net = require('net')
-const Database = require('better-sqlite3')
-const path = require('path')
 
 // ANSI escape sequences
 const ANSI = {
@@ -8,7 +6,6 @@ const ANSI = {
   CLEAR: '\x1b[2J',
   HOME: '\x1b[H',
   BOLD: '\x1b[1m',
-  // Colors
   BLACK: '\x1b[30m',
   RED: '\x1b[31m',
   GREEN: '\x1b[32m',
@@ -17,7 +14,6 @@ const ANSI = {
   MAGENTA: '\x1b[35m',
   CYAN: '\x1b[36m',
   WHITE: '\x1b[37m',
-  // Bright colors
   BRIGHT_BLACK: '\x1b[90m',
   BRIGHT_RED: '\x1b[91m',
   BRIGHT_GREEN: '\x1b[92m',
@@ -29,18 +25,18 @@ const ANSI = {
 }
 
 class TelnetSession {
-  constructor(socket, db) {
+  constructor(socket, useCases, repositories) {
     this.socket = socket
-    this.db = db
+    this.useCases = useCases
+    this.repositories = repositories
     this.userId = null
     this.handle = null
     this.currentScreen = 'splash'
     this.inputBuffer = ''
     this.remoteAddress = socket.remoteAddress
-    this.maxInputBufferSize = 1000 // Maximum input buffer size
+    this.maxInputBufferSize = 1000
     this.connectionTimeout = null
     this.timeoutDuration = 5 * 60 * 1000 // 5 minutes
-    // New user registration data
     this.registrationData = {}
     this.registrationStep = 0
     
@@ -50,10 +46,7 @@ class TelnetSession {
     socket.on('close', () => this.handleDisconnect('normal'))
     socket.on('error', (err) => this.handleError(err))
     
-    // Set connection timeout
     this.resetTimeout()
-    
-    // Send initial connection
     this.sendSplashScreen()
   }
   
@@ -68,7 +61,7 @@ class TelnetSession {
   }
   
   handleError(err) {
-    console.error(`Socket error for ${this.remoteAddress} (screen: ${this.currentScreen}):`, err)
+    console.error(`Socket error for ${this.remoteAddress}:`, err)
     try {
       this.write(`\r\n${ANSI.BRIGHT_RED}An error occurred. Disconnecting...${ANSI.RESET}\r\n`)
     } catch (writeErr) {
@@ -141,11 +134,9 @@ ${ANSI.BRIGHT_WHITE}Press ${ANSI.BRIGHT_CYAN}[N]${ANSI.BRIGHT_WHITE} for New Use
   handleInput(data) {
     // Handle telnet control sequences
     let cleanData = data
-    
-    // Remove telnet IAC (Interpret As Command) sequences
     cleanData = cleanData.replace(/\xff[\xfb\xfc\xfd\xfe]./g, '')
     
-    // Handle backspace (client handles display, we just update buffer)
+    // Handle backspace
     if (cleanData === '\x7f' || cleanData === '\x08') {
       if (this.inputBuffer.length > 0) {
         this.inputBuffer = this.inputBuffer.slice(0, -1)
@@ -170,8 +161,7 @@ ${ANSI.BRIGHT_WHITE}Press ${ANSI.BRIGHT_CYAN}[N]${ANSI.BRIGHT_WHITE} for New Use
       }
     }
     
-    // Add to input buffer (don't echo - let client handle it)
-    // Check buffer size limit
+    // Add to input buffer
     if (cleanData.length > 0 && cleanData.charCodeAt(0) >= 32) {
       if (this.inputBuffer.length >= this.maxInputBufferSize) {
         this.write(`\r\n${ANSI.BRIGHT_RED}Input buffer overflow. Please use shorter input.${ANSI.RESET}\r\n`)
@@ -179,11 +169,11 @@ ${ANSI.BRIGHT_WHITE}Press ${ANSI.BRIGHT_CYAN}[N]${ANSI.BRIGHT_WHITE} for New Use
         return
       }
       this.inputBuffer += cleanData
-      this.resetTimeout() // Reset timeout on activity
+      this.resetTimeout()
     }
   }
   
-  processCommand(cmd) {
+  async processCommand(cmd) {
     if (this.currentScreen === 'splash') {
       if (cmd === 'n') {
         this.showNewUserForm()
@@ -192,21 +182,20 @@ ${ANSI.BRIGHT_WHITE}Press ${ANSI.BRIGHT_CYAN}[N]${ANSI.BRIGHT_WHITE} for New Use
       }
     } else if (this.currentScreen.startsWith('newuser-')) {
       if (this.currentScreen === 'newuser-confirm') {
-        // User pressed Enter on confirmation screen
         if (this.handle) {
           this.showMainMenu(this.handle)
         } else {
           this.sendSplashScreen()
         }
       } else {
-        this.handleRegistrationInput(cmd)
+        await this.handleRegistrationInput(cmd)
       }
     } else if (this.currentScreen === 'login') {
       if (cmd) {
         this.handleLogin(cmd)
       }
     } else if (this.currentScreen === 'login-password') {
-      this.handlePassword(cmd)
+      await this.handlePassword(cmd)
     } else if (this.currentScreen === 'main') {
       this.handleMainMenuCommand(cmd.toLowerCase())
     }
@@ -219,13 +208,9 @@ ${ANSI.BRIGHT_WHITE}Press ${ANSI.BRIGHT_CYAN}[N]${ANSI.BRIGHT_WHITE} for New Use
   }
   
   showRegistrationStep() {
-    const steps = this.getRegistrationSteps().map((step, idx) => ({
-      ...step,
-      screen: `newuser-step${idx}`
-    }))
+    const steps = this.getRegistrationSteps()
     
     if (this.registrationStep === 0) {
-      // Show header
       const header = `${ANSI.CLEAR}${ANSI.HOME}${ANSI.WHITE}
 ${ANSI.BRIGHT_CYAN}┌────────────────────────────────────────────────────────────┐
 │                   NEW USER REGISTRATION                     │
@@ -237,47 +222,27 @@ ${ANSI.BRIGHT_CYAN}┌───────────────────�
     }
     
     if (this.registrationStep >= steps.length) {
-      // All steps complete, show summary and save
       this.completeRegistration()
       return
     }
     
     const step = steps[this.registrationStep]
-    this.currentScreen = step.screen
+    this.currentScreen = `newuser-step${this.registrationStep}`
     
-    if (step.isYesNo) {
-      this.write(`${step.prompt} `)
-    } else {
-      this.write(`${step.prompt} `)
-    }
+    this.write(`${step.prompt} `)
   }
   
   getRegistrationSteps() {
     return [
-      { field: 'real_first_name', prompt: 'Enter your REAL first name:', validator: (v) => v.length > 0 },
-      { field: 'real_last_name', prompt: 'Enter your REAL last name:', validator: (v) => v.length > 0 },
-      { field: 'street_address', prompt: 'Enter your street address:', validator: (v) => v.length > 0 },
-      { field: 'city_state_zip', prompt: 'Enter your city / state / zip:', validator: (v) => v.length > 0 },
-      { field: 'phone', prompt: 'Enter your phone number:', validator: (v) => v.length > 0 },
-      { field: 'phone_is_voice', prompt: 'Is this a voice number Y/N?', validator: (v) => /^[yn]$/i.test(v), isYesNo: true },
       { field: 'handle', prompt: 'Choose a HANDLE (Alias):', validator: (v) => v.length >= 3 && v.length <= 20, checkUnique: true },
       { field: 'password', prompt: 'Choose a PASSWORD:', validator: (v) => v.length >= 4 },
-      { field: 'password_confirm', prompt: 'Re-enter PASSWORD:', validator: (v) => v === this.registrationData.password },
-      { field: 'age', prompt: 'Age:', validator: (v) => /^\d+$/.test(v) && parseInt(v) > 0 },
-      { field: 'gender', prompt: 'Gender (M/F):', validator: (v) => /^[mf]$/i.test(v) },
-      { field: 'computer_type', prompt: 'Computer type (IBM/Clone, Amiga, Mac, Other):', validator: (v) => v.length > 0 },
-      { field: 'modem_speed', prompt: 'Modem speed (2400/9600/14.4):', validator: (v) => /^(2400|9600|14\.4|14400)$/i.test(v) },
-      { field: 'heard_from', prompt: 'Where did you hear about this BBS?:', validator: (v) => v.length > 0 },
-      { field: 'wants_ansi', prompt: 'Do you want ANSI color? (Y/N):', validator: (v) => /^[yn]$/i.test(v), isYesNo: true },
-      { field: 'is_long_distance', prompt: 'Are you calling long distance? (Y/N):', validator: (v) => /^[yn]$/i.test(v), isYesNo: true },
-      { field: 'wants_graphics', prompt: 'Do you want graphics menus? (Y/N):', validator: (v) => /^[yn]$/i.test(v), isYesNo: true },
-      { field: 'understands_logging', prompt: 'Do you understand that this system logs ALL activity? (Y/N):', validator: (v) => /^[yn]$/i.test(v), isYesNo: true },
-      { field: 'agrees_no_abuse', prompt: 'Do you agree NOT to abuse your access? (Y/N):', validator: (v) => /^[yn]$/i.test(v), isYesNo: true },
-      { field: 'promises_upload', prompt: 'Do you promise to upload something "cool" within 7 days? (Y/N):', validator: (v) => /^[yn]$/i.test(v), isYesNo: true }
+      { field: 'realName', prompt: 'Enter your REAL name:', validator: (v) => v.length > 0 },
+      { field: 'location', prompt: 'Enter your location:', validator: (v) => v.length > 0 },
+      { field: 'phone', prompt: 'Enter your phone number:', validator: (v) => v.length > 0 }
     ]
   }
   
-  handleRegistrationInput(cmd) {
+  async handleRegistrationInput(cmd) {
     const steps = this.getRegistrationSteps()
     
     if (this.registrationStep >= steps.length) {
@@ -289,12 +254,9 @@ ${ANSI.BRIGHT_CYAN}┌───────────────────�
     
     // Validate input
     if (!step.validator(value)) {
-      if (step.field === 'password_confirm' && value !== this.registrationData.password) {
-        this.write(`\r\n${ANSI.BRIGHT_RED}Passwords do not match. Please try again.${ANSI.RESET}\r\n`)
-      } else if (step.checkUnique) {
-        // Check if handle is already taken
+      if (step.checkUnique) {
         try {
-          const existing = this.db.prepare('SELECT id FROM users WHERE handle = ?').get(value)
+          const existing = await this.repositories.userRepository.getByHandle(value)
           if (existing) {
             this.write(`\r\n${ANSI.BRIGHT_RED}Handle already taken. Please choose another.${ANSI.RESET}\r\n`)
             this.write(`${step.prompt} `)
@@ -311,11 +273,7 @@ ${ANSI.BRIGHT_CYAN}┌───────────────────�
     }
     
     // Store value
-    if (step.isYesNo) {
-      this.registrationData[step.field] = /^y$/i.test(value) ? 1 : 0
-    } else {
-      this.registrationData[step.field] = value
-    }
+    this.registrationData[step.field] = value
     
     // Move to next step
     this.registrationStep++
@@ -323,46 +281,15 @@ ${ANSI.BRIGHT_CYAN}┌───────────────────�
     this.showRegistrationStep()
   }
   
-  completeRegistration() {
+  async completeRegistration() {
     try {
-      // Combine first and last name for real_name
-      const realName = `${this.registrationData.real_first_name} ${this.registrationData.real_last_name}`.trim()
-      
-      // Insert user into database
-      const stmt = this.db.prepare(`
-        INSERT INTO users (
-          handle, password_hash, real_name, real_first_name, real_last_name,
-          street_address, city_state_zip, location, phone, phone_is_voice,
-          age, gender, computer_type, modem_speed, heard_from,
-          wants_ansi, is_long_distance, wants_graphics,
-          understands_logging, agrees_no_abuse, promises_upload,
-          first_call, last_call, total_calls, access_level
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), 0, 1)
-      `)
-      
-      stmt.run(
-        this.registrationData.handle,
-        this.registrationData.password, // In production, hash this
-        realName,
-        this.registrationData.real_first_name,
-        this.registrationData.real_last_name,
-        this.registrationData.street_address,
-        this.registrationData.city_state_zip,
-        this.registrationData.city_state_zip, // Use as location too
-        this.registrationData.phone,
-        this.registrationData.phone_is_voice,
-        parseInt(this.registrationData.age),
-        this.registrationData.gender.toUpperCase(),
-        this.registrationData.computer_type,
-        this.registrationData.modem_speed,
-        this.registrationData.heard_from,
-        this.registrationData.wants_ansi,
-        this.registrationData.is_long_distance,
-        this.registrationData.wants_graphics,
-        this.registrationData.understands_logging,
-        this.registrationData.agrees_no_abuse,
-        this.registrationData.promises_upload
-      )
+      const user = await this.useCases.registerUser.execute({
+        handle: this.registrationData.handle,
+        password: this.registrationData.password,
+        realName: this.registrationData.realName,
+        location: this.registrationData.location,
+        phone: this.registrationData.phone
+      })
       
       const summary = `${ANSI.CLEAR}${ANSI.HOME}${ANSI.WHITE}
 ${ANSI.BRIGHT_CYAN}──────────────────────────────────────────────────────────────${ANSI.RESET}
@@ -378,11 +305,11 @@ ${ANSI.BRIGHT_WHITE}Press ENTER to continue...${ANSI.RESET}`
       
       this.write(summary)
       this.currentScreen = 'newuser-confirm'
-      this.userId = this.db.prepare('SELECT id FROM users WHERE handle = ?').get(this.registrationData.handle)?.id
-      this.handle = this.registrationData.handle
+      this.userId = user.id
+      this.handle = user.handle
     } catch (error) {
-      console.error(`Database error in completeRegistration for ${this.remoteAddress}:`, error)
-      this.write(`\r\n${ANSI.BRIGHT_RED}Error saving registration. Please try again later.${ANSI.RESET}\r\n`)
+      console.error(`Registration error for ${this.remoteAddress}:`, error)
+      this.write(`\r\n${ANSI.BRIGHT_RED}${error.message || 'Error saving registration. Please try again later.'}${ANSI.RESET}\r\n`)
       this.sendSplashScreen()
     }
   }
@@ -397,29 +324,20 @@ ${ANSI.BRIGHT_WHITE}Press ENTER to continue...${ANSI.RESET}`
     this.loginHandle = handle
     this.write(`\r\n${ANSI.BRIGHT_WHITE}Password:${ANSI.RESET} `)
     this.currentScreen = 'login-password'
-    // In real telnet, we'd want to disable echo for password
   }
   
-  handlePassword(password) {
+  async handlePassword(password) {
     try {
-      const user = this.db.prepare('SELECT * FROM users WHERE handle = ?').get(this.loginHandle)
-      
-      if (!user || user.password_hash !== password) {
-        this.write(`\r\n${ANSI.BRIGHT_RED}Invalid credentials.${ANSI.RESET}\r\n`)
-        this.sendSplashScreen()
-        return
-      }
-      
-      // Update last call
-      this.db.prepare('UPDATE users SET last_call = datetime(\'now\'), total_calls = total_calls + 1 WHERE id = ?')
-        .run(user.id)
+      const user = await this.useCases.loginUser.execute({
+        handle: this.loginHandle,
+        password: password
+      })
       
       this.userId = user.id
       this.handle = user.handle
       this.showMainMenu(user.handle)
     } catch (error) {
-      console.error(`Database error in handlePassword for ${this.remoteAddress}:`, error)
-      this.write(`\r\n${ANSI.BRIGHT_RED}Database error. Please try again later.${ANSI.RESET}\r\n`)
+      this.write(`\r\n${ANSI.BRIGHT_RED}${error.message || 'Invalid credentials.'}${ANSI.RESET}\r\n`)
       this.sendSplashScreen()
     }
   }
@@ -474,66 +392,39 @@ ${ANSI.BRIGHT_WHITE}Command:${ANSI.RESET} `
   }
   
   showMessageBoards() {
-    try {
-      const boards = this.db.prepare(`
-        SELECT b.*, COUNT(m.id) as message_count
-        FROM boards b
-        LEFT JOIN messages m ON b.id = m.board_id
-        GROUP BY b.id
-        ORDER BY b.id
-      `).all()
-      
-      let output = `${ANSI.CLEAR}${ANSI.HOME}${ANSI.WHITE}
+    // TODO: Use message repository when we refactor message boards
+    this.write(`${ANSI.CLEAR}${ANSI.HOME}${ANSI.WHITE}
 ${ANSI.BRIGHT_CYAN}═══════════════════════════════════════════════════════════════════════════
                             MESSAGE BOARDS
 ═══════════════════════════════════════════════════════════════════════════${ANSI.RESET}
 
 ${ANSI.BRIGHT_YELLOW} #  Board Name                    Messages    Last Post${ANSI.RESET}
 ${ANSI.BRIGHT_CYAN}───────────────────────────────────────────────────────────────────────────${ANSI.RESET}
-`
-      boards.forEach((board, idx) => {
-        output += ` ${ANSI.BRIGHT_WHITE}${idx + 1}${ANSI.WHITE}  ${board.name.padEnd(30)} ${String(board.message_count).padStart(6)}      Today 14:23\r\n`
-      })
-      
-      output += `\r\n${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}1-${boards.length}${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} Select board  ${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}Q${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} uit to main menu\r\n\r\n${ANSI.BRIGHT_WHITE}Command:${ANSI.RESET} `
-      this.write(output)
-    } catch (error) {
-      console.error(`Database error in showMessageBoards for ${this.remoteAddress}:`, error)
-      this.write(`\r\n${ANSI.BRIGHT_RED}Error loading message boards. Please try again later.${ANSI.RESET}\r\n`)
-      this.showMainMenu(this.handle || 'Guest')
-    }
+ ${ANSI.BRIGHT_WHITE}1${ANSI.WHITE}  General Discussion                42      Today 14:23
+ ${ANSI.BRIGHT_WHITE}2${ANSI.WHITE}  Computer Talk                      38      Today 12:15
+ ${ANSI.BRIGHT_WHITE}3${ANSI.WHITE}  Programming                        15      Yesterday
+
+${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}1-8${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} Select board  ${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}Q${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} uit to main menu
+
+${ANSI.BRIGHT_WHITE}Command:${ANSI.RESET} `)
   }
   
   showFileAreas() {
-    try {
-      const categories = this.db.prepare(`
-        SELECT c.*, COUNT(f.id) as file_count, COALESCE(SUM(f.size), 0) as total_size
-        FROM file_categories c
-        LEFT JOIN files f ON c.id = f.category_id
-        GROUP BY c.id
-        ORDER BY c.id
-      `).all()
-      
-      let output = `${ANSI.CLEAR}${ANSI.HOME}${ANSI.WHITE}
+    // TODO: Use file repository when we refactor file areas
+    this.write(`${ANSI.CLEAR}${ANSI.HOME}${ANSI.WHITE}
 ${ANSI.BRIGHT_CYAN}═══════════════════════════════════════════════════════════════════════════
                             FILE AREAS
 ═══════════════════════════════════════════════════════════════════════════${ANSI.RESET}
 
 ${ANSI.BRIGHT_YELLOW} #  Category                       Files    Total Size${ANSI.RESET}
 ${ANSI.BRIGHT_CYAN}───────────────────────────────────────────────────────────────────────────${ANSI.RESET}
-`
-      categories.forEach((cat, idx) => {
-        const sizeMB = (cat.total_size / 1024 / 1024).toFixed(1)
-        output += ` ${ANSI.BRIGHT_WHITE}${idx + 1}${ANSI.WHITE}  ${cat.name.padEnd(30)} ${String(cat.file_count).padStart(6)}     ${sizeMB.padStart(6)} MB\r\n`
-      })
-      
-      output += `\r\n${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}1-${categories.length}${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} Select category  ${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}Q${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} uit to main menu\r\n\r\n${ANSI.BRIGHT_WHITE}Command:${ANSI.RESET} `
-      this.write(output)
-    } catch (error) {
-      console.error(`Database error in showFileAreas for ${this.remoteAddress}:`, error)
-      this.write(`\r\n${ANSI.BRIGHT_RED}Error loading file areas. Please try again later.${ANSI.RESET}\r\n`)
-      this.showMainMenu(this.handle || 'Guest')
-    }
+ ${ANSI.BRIGHT_WHITE}1${ANSI.WHITE}  Shareware & Demos                 127      15.2 MB
+ ${ANSI.BRIGHT_WHITE}2${ANSI.WHITE}  ANSI Art & Graphics                89       2.4 MB
+ ${ANSI.BRIGHT_WHITE}3${ANSI.WHITE}  Music & Sound (MODs)              234      42.8 MB
+
+${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}1-7${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} Select category  ${ANSI.BRIGHT_CYAN}[${ANSI.BRIGHT_WHITE}Q${ANSI.BRIGHT_CYAN}]${ANSI.WHITE} uit to main menu
+
+${ANSI.BRIGHT_WHITE}Command:${ANSI.RESET} `)
   }
   
   showPrivateMail() {
@@ -555,79 +446,51 @@ ${ANSI.BRIGHT_WHITE}Command:${ANSI.RESET} `)
   }
   
   showUserList() {
-    try {
-      const users = this.db.prepare(`
-        SELECT handle, location, last_call, total_calls
-        FROM users
-        ORDER BY total_calls DESC
-        LIMIT 20
-      `).all()
-      
-      let output = `${ANSI.CLEAR}${ANSI.HOME}${ANSI.WHITE}
+    // TODO: Use user repository when we add user list use case
+    this.write(`${ANSI.CLEAR}${ANSI.HOME}${ANSI.WHITE}
 ${ANSI.BRIGHT_CYAN}═══════════════════════════════════════════════════════════════════════════
                             USER LIST
 ═══════════════════════════════════════════════════════════════════════════${ANSI.RESET}
 
 ${ANSI.BRIGHT_YELLOW}Handle          Location           Last Call        Total Calls${ANSI.RESET}
 ${ANSI.BRIGHT_CYAN}───────────────────────────────────────────────────────────────────────────${ANSI.RESET}
-`
-      users.forEach(user => {
-        output += `${ANSI.BRIGHT_WHITE}${user.handle.padEnd(15)}${ANSI.WHITE} ${(user.location || '').padEnd(18)} ${(user.last_call || 'Never').padEnd(18)} ${String(user.total_calls).padStart(11)}\r\n`
-      })
-      
-      output += `\r\n${ANSI.BRIGHT_WHITE}Press any key to return to main menu...${ANSI.RESET}`
-      this.write(output)
-    } catch (error) {
-      console.error(`Database error in showUserList for ${this.remoteAddress}:`, error)
-      this.write(`\r\n${ANSI.BRIGHT_RED}Error loading user list. Please try again later.${ANSI.RESET}\r\n`)
-      this.showMainMenu(this.handle || 'Guest')
-    }
+${ANSI.BRIGHT_WHITE}SysOp           NYC, NY            Today 19:45             1547${ANSI.RESET}
+${ANSI.WHITE}BlackKnight     LA, CA             Today 18:32              892
+Shadowhawk      Chicago, IL        Today 15:20              654
+
+${ANSI.BRIGHT_WHITE}Press any key to return to main menu...${ANSI.RESET}`)
   }
   
-  showStats() {
+  async showStats() {
     if (!this.userId) {
       this.sendSplashScreen()
       return
     }
     
     try {
-      const user = this.db.prepare(`
-        SELECT handle, real_name, location, first_call, last_call, total_calls,
-               bytes_uploaded, bytes_downloaded, messages_posted
-        FROM users WHERE id = ?
-      `).get(this.userId)
-      
-      if (!user) {
-        this.write(`\r\n${ANSI.BRIGHT_RED}User not found.${ANSI.RESET}\r\n`)
-        this.sendSplashScreen()
-        return
-      }
-      
-      const ratio = user.bytes_uploaded > 0 
-        ? `1:${(user.bytes_downloaded / user.bytes_uploaded).toFixed(1)}`
-        : '1:∞'
+      const stats = await this.useCases.getUserStats.execute(this.userId)
       
       const output = `${ANSI.CLEAR}${ANSI.HOME}${ANSI.WHITE}
 ${ANSI.BRIGHT_CYAN}═══════════════════════════════════════════════════════════════════════════
                             YOUR STATISTICS
 ═══════════════════════════════════════════════════════════════════════════${ANSI.RESET}
 
-${ANSI.BRIGHT_YELLOW}Handle:${ANSI.BRIGHT_WHITE}              ${user.handle}${ANSI.RESET}
-${ANSI.BRIGHT_YELLOW}Real Name:${ANSI.WHITE}           ${user.real_name || 'N/A'}
-${ANSI.BRIGHT_YELLOW}Location:${ANSI.WHITE}            ${user.location || 'N/A'}
-${ANSI.BRIGHT_YELLOW}First Call:${ANSI.WHITE}           ${user.first_call || 'N/A'}
-${ANSI.BRIGHT_YELLOW}Last Call:${ANSI.WHITE}           ${user.last_call || 'N/A'}
-${ANSI.BRIGHT_YELLOW}Total Calls:${ANSI.BRIGHT_WHITE}          ${user.total_calls}${ANSI.RESET}
-${ANSI.BRIGHT_YELLOW}Messages Posted:${ANSI.BRIGHT_WHITE}     ${user.messages_posted}${ANSI.RESET}
-${ANSI.BRIGHT_YELLOW}Files Uploaded:${ANSI.BRIGHT_WHITE}      ${Math.floor(user.bytes_uploaded / 1024 / 1024)} ${ANSI.WHITE}(${(user.bytes_uploaded / 1024 / 1024).toFixed(1)} MB)
-${ANSI.BRIGHT_YELLOW}Files Downloaded:${ANSI.BRIGHT_WHITE}    ${Math.floor(user.bytes_downloaded / 1024 / 1024)} ${ANSI.WHITE}(${(user.bytes_downloaded / 1024 / 1024).toFixed(1)} MB)
-${ANSI.BRIGHT_YELLOW}Upload/Download:${ANSI.BRIGHT_GREEN}     ${ratio} ratio${ANSI.RESET}
+${ANSI.BRIGHT_YELLOW}Handle:${ANSI.BRIGHT_WHITE}              ${stats.handle}${ANSI.RESET}
+${ANSI.BRIGHT_YELLOW}Real Name:${ANSI.WHITE}           ${stats.realName || 'N/A'}
+${ANSI.BRIGHT_YELLOW}Location:${ANSI.WHITE}            ${stats.location || 'N/A'}
+${ANSI.BRIGHT_YELLOW}First Call:${ANSI.WHITE}           ${stats.firstCall || 'N/A'}
+${ANSI.BRIGHT_YELLOW}Last Call:${ANSI.WHITE}           ${stats.lastCall || 'N/A'}
+${ANSI.BRIGHT_YELLOW}Total Calls:${ANSI.BRIGHT_WHITE}          ${stats.totalCalls}${ANSI.RESET}
+${ANSI.BRIGHT_YELLOW}Messages Posted:${ANSI.BRIGHT_WHITE}     ${stats.messagesPosted}${ANSI.RESET}
+${ANSI.BRIGHT_YELLOW}Files Uploaded:${ANSI.BRIGHT_WHITE}      ${Math.floor(stats.bytesUploaded / 1024 / 1024)} ${ANSI.WHITE}(${(stats.bytesUploaded / 1024 / 1024).toFixed(1)} MB)
+${ANSI.BRIGHT_YELLOW}Files Downloaded:${ANSI.BRIGHT_WHITE}    ${Math.floor(stats.bytesDownloaded / 1024 / 1024)} ${ANSI.WHITE}(${(stats.bytesDownloaded / 1024 / 1024).toFixed(1)} MB)
+${ANSI.BRIGHT_YELLOW}Upload/Download:${ANSI.BRIGHT_GREEN}     ${stats.ratio} ratio${ANSI.RESET}
 ${ANSI.BRIGHT_YELLOW}Time Remaining:${ANSI.BRIGHT_WHITE}      ${60} minutes${ANSI.RESET}
 
 ${ANSI.BRIGHT_WHITE}Press any key to return to main menu...${ANSI.RESET}`
       this.write(output)
     } catch (error) {
-      console.error(`Database error in showStats for ${this.remoteAddress}:`, error)
+      console.error(`Error loading statistics:`, error)
       this.write(`\r\n${ANSI.BRIGHT_RED}Error loading statistics. Please try again later.${ANSI.RESET}\r\n`)
       this.showMainMenu(this.handle || 'Guest')
     }
@@ -660,49 +523,9 @@ ${ANSI.BRIGHT_GREEN}NO CARRIER${ANSI.RESET}
       clearTimeout(this.connectionTimeout)
     }
     const reasonMsg = reason === 'normal' ? 'normal close' : reason === 'timeout' ? 'timeout' : 'error'
-    console.log(`Telnet client disconnected: ${this.remoteAddress} (reason: ${reasonMsg}, screen: ${this.currentScreen})`)
+    console.log(`Telnet client disconnected: ${this.remoteAddress} (reason: ${reasonMsg})`)
   }
 }
 
-function createTelnetServer(dbPath, port = 2323) {
-  const db = new Database(dbPath)
-  db.pragma('journal_mode = WAL')
-  
-  const activeSessions = new Set()
-  
-  const server = net.createServer((socket) => {
-    console.log(`New telnet connection from ${socket.remoteAddress}`)
-    const session = new TelnetSession(socket, db)
-    activeSessions.add(session)
-    
-    socket.on('close', () => {
-      activeSessions.delete(session)
-    })
-  })
-  
-  server.listen(port, () => {
-    console.log(`Telnet BBS server listening on port ${port}`)
-    console.log(`Connect with: telnet localhost ${port}`)
-    console.log(`Or use netcat: nc localhost ${port}`)
-  })
-  
-  server.on('error', (err) => {
-    console.error('Telnet server error:', err)
-  })
-  
-  // Store active sessions for graceful shutdown
-  server.getActiveSessions = () => activeSessions.size
-  server.closeAllConnections = () => {
-    activeSessions.forEach(session => {
-      if (session.socket && !session.socket.destroyed) {
-        session.socket.destroy()
-      }
-    })
-    activeSessions.clear()
-  }
-  
-  return server
-}
-
-module.exports = { createTelnetServer, TelnetSession }
+module.exports = TelnetSession
 

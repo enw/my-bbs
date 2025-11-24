@@ -16,17 +16,5 @@ export default defineConfig({
         changeOrigin: true
       }
     }
-  },
-  optimizeDeps: {
-    include: ['sql.js'],
-    esbuildOptions: {
-      // Handle CommonJS modules
-      mainFields: ['module', 'main']
-    }
-  },
-  assetsInclude: ['**/*.wasm'],
-  commonjsOptions: {
-    // Transform CommonJS to ES modules
-    transformMixedEsModules: true
   }
 })

@@ -50,8 +50,8 @@ Organized categories matching the 1993 era:
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ and pnpm (for development)
-- Modern web browser (works entirely in browser - no server needed!)
+- Node.js 18+ and pnpm
+- Modern web browser (for web mode)
 
 ### Installation
 
@@ -63,70 +63,12 @@ cd my-bbs
 # Install dependencies
 pnpm install
 
-# Copy environment variables template (optional, for server mode)
-cp .env.example .env
-
 # Run in development mode (web)
 pnpm dev
 
 # Run as Electron app
 pnpm electron:dev
-
-# Build standalone browser-only version
-pnpm build:standalone
 ```
-
-### Browser-Only Mode
-
-The BBS can run **entirely in your browser** without any server! 
-
-- **Automatic Detection**: The app automatically detects if a server is available and falls back to browser-only mode
-- **No Server Required**: Works offline, can be deployed as a static site
-- **Local Storage**: Uses IndexedDB to persist your BBS data in the browser
-- **Full Features**: All BBS features work in browser mode (registration, login, message boards, file areas, etc.)
-
-**Deploy as Static Site:**
-```bash
-# Build for production
-pnpm build:standalone
-
-# Deploy the 'dist' folder to:
-# - GitHub Pages
-# - Netlify
-# - Vercel
-# - Any static hosting service
-```
-
-The browser-only version uses SQL.js (SQLite compiled to WebAssembly) for database storage, providing the same functionality as the server version but running entirely client-side.
-
-### Environment Configuration
-
-The server uses environment variables for configuration. Copy `.env.example` to `.env` and customize as needed:
-
-```bash
-# HTTP Server Configuration
-PORT=3000                    # HTTP server port
-NODE_ENV=development         # Environment mode (development/production)
-
-# Telnet Server Configuration
-TELNET_PORT=2323             # Telnet server port
-ENABLE_TELNET=true           # Enable/disable telnet server
-
-# Database Configuration
-DB_PATH=server/data/bbs.db   # Path to SQLite database file
-
-# Session Configuration
-SESSION_SECRET=your-secret   # Secret key for session encryption (change in production!)
-
-# CORS Configuration
-CORS_ORIGIN=http://localhost:5173  # Allowed origin for CORS (web frontend)
-```
-
-**Production Notes:**
-- Set `NODE_ENV=production` for production
-- Use a strong, random `SESSION_SECRET` in production
-- Update `CORS_ORIGIN` to your production domain
-- Ensure `DB_PATH` points to a persistent location
 
 ### Development Commands
 
@@ -157,17 +99,12 @@ my-bbs/
 ├── client/          # React frontend (Vite)
 │   ├── src/
 │   │   ├── components/   # Terminal, ModemConnect, etc.
-│   │   ├── lib/          # ANSI parser, BBS engine, browser DB
-│   │   │   ├── ansiParser.js
-│   │   │   ├── bbsEngine.js      # Browser BBS engine
-│   │   │   ├── browserDB.js      # SQL.js database wrapper
-│   │   │   └── connectionManager.js  # Server/browser detection
+│   │   ├── lib/          # ANSI parser, utilities
 │   │   └── styles/       # CSS files
 │   └── index.html
-├── server/          # Node.js/Express backend (optional)
+├── server/          # Node.js/Express backend
 │   ├── src/
 │   │   ├── index.js      # Main server file
-│   │   ├── telnetServer.js  # Telnet server
 │   │   └── routes/       # API routes
 │   └── data/             # SQLite database
 ├── electron/        # Electron main process
@@ -179,33 +116,13 @@ my-bbs/
 └── shared/          # Shared types/utilities
 ```
 
-### Connection Modes
-
-The BBS supports two connection modes:
-
-1. **Server Mode** (Optional)
-   - Backend API on port 3000
-   - Telnet server on port 2323
-   - SQLite database on server
-   - Full multi-user support
-
-2. **Browser-Only Mode** (Default Fallback)
-   - No server required
-   - SQL.js (SQLite in browser)
-   - IndexedDB for persistence
-   - Works offline
-   - Can be deployed as static site
-
-The app automatically detects server availability and falls back to browser mode if the server is unavailable.
-
 ## 🎮 Usage
 
 ### Web Browser
-1. Run `pnpm dev` (or just open the built files)
+1. Run `pnpm dev`
 2. Open http://localhost:5173
 3. Watch the modem connection sequence
 4. Press `[N]` for New User or `[L]` to Login
-5. **No server needed!** The BBS runs entirely in your browser using SQL.js
 
 ### Desktop App (Electron)
 1. Run `pnpm electron:dev`
@@ -286,61 +203,6 @@ Inspired by the golden era of BBSs (1985-1995), including legendary systems like
 - Channel 1
 
 Special thanks to all the SysOps who kept the BBS scene alive in the dial-up era!
-
-## 🔧 Troubleshooting
-
-### Telnet Connection Issues
-
-**Can't connect via telnet:**
-- Ensure telnet server is enabled: `ENABLE_TELNET=true` in `.env`
-- Check if port is available: `lsof -i :2323` (or your `TELNET_PORT`)
-- Verify firewall allows the telnet port
-- Try connecting with: `telnet localhost 2323` or `nc localhost 2323`
-
-**Connection timeout:**
-- Default timeout is 5 minutes of inactivity
-- Type any character to reset the timeout
-- This is normal behavior to prevent idle connections
-
-**Database errors in telnet:**
-- Check database file exists at `DB_PATH`
-- Ensure database file is readable/writable
-- Run `node server/src/seedData.js` to initialize database if needed
-
-### Server Issues
-
-**Port already in use:**
-```bash
-# Find process using port 3000
-lsof -ti:3000 | xargs kill
-
-# Find process using telnet port
-lsof -ti:2323 | xargs kill
-```
-
-**Database not found:**
-- Database is created automatically on first run
-- Or run: `node server/src/seedData.js` to create and seed database
-- Check `DB_PATH` in `.env` points to correct location
-
-**Session issues:**
-- Clear browser cookies if sessions aren't working
-- Ensure `SESSION_SECRET` is set (required for production)
-- Check CORS settings if API calls fail from browser
-
-### Development vs Production
-
-**Development:**
-- Uses default ports (3000 for HTTP, 2323 for telnet)
-- CORS allows `http://localhost:5173`
-- Session cookies not secure (HTTP only)
-
-**Production:**
-- Set `NODE_ENV=production`
-- Use strong `SESSION_SECRET`
-- Update `CORS_ORIGIN` to your domain
-- Consider using HTTPS (requires reverse proxy like Nginx)
-- Use process manager (PM2, systemd) for auto-restart
 
 ## 📞 Support
 
