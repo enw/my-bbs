@@ -21,7 +21,14 @@ function createTelnetServer(useCases, repositories, port = 2323) {
   })
   
   server.on('error', (err) => {
-    console.error('Telnet server error:', err)
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Telnet server error: Port ${port} is already in use.`)
+      console.error('This usually means the previous server instance is still running.')
+      console.error('Try: lsof -ti:2323 | xargs kill -9')
+      // Don't throw - let the process handle it
+    } else {
+      console.error('Telnet server error:', err)
+    }
   })
   
   // Store active sessions for graceful shutdown

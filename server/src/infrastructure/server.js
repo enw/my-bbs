@@ -108,12 +108,12 @@ function createServer() {
   app.use('/api/settings', createSettingsRoutes(container.controllers.settingsController))
 
   // Start HTTP server
-  app.listen(PORT, () => {
+  const httpServer = app.listen(PORT, () => {
     console.log(`DRiPz \/RLD HTTP Server running on http://localhost:${PORT}`)
   })
 
   // Return both servers for graceful shutdown
-  return { httpServer: app, telnetServer }
+  return { httpServer, telnetServer }
 }
 
 module.exports = createServer

@@ -1,0 +1,9 @@
+{
+  "watch": ["server/src"],
+  "ext": "js,json",
+  "ignore": ["node_modules", "client", "*.test.js", "*.spec.js"],
+  "exec": "node server/src/index.js",
+  "signal": "SIGTERM",
+  "delay": 1000
+}
+
