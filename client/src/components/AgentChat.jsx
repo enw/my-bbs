@@ -153,8 +153,15 @@ const AgentChat = ({ onBack }) => {
     showChatInterface()
   }, [])
 
+  const handleTerminalClick = (e) => {
+    // Only focus input if clicking on empty area (not on text)
+    if (e.target === terminalRef.current || e.target.classList.contains('terminal')) {
+      inputRef.current?.focus()
+    }
+  }
+
   return (
-    <div className="terminal" ref={terminalRef} onClick={() => inputRef.current?.focus()}>
+    <div className="terminal" ref={terminalRef} onClick={handleTerminalClick}>
       <div className="terminal-screen" style={{ width: `${terminalWidth}ch`, maxWidth: `${terminalWidth}ch` }}>
         {messages.map((line, lineIdx) => (
           <div key={lineIdx} className="terminal-line" style={{ maxWidth: `${terminalWidth}ch` }}>

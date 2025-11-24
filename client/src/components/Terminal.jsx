@@ -67,9 +67,11 @@ const Terminal = () => {
   }, [])
 
   // Keep input focused at all times
-  const handleTerminalClick = () => {
-    if (inputRef.current) {
-      inputRef.current.focus()
+  const handleTerminalClick = (e) => {
+    // Only focus input if clicking on empty area (not on text)
+    // Allow text selection to work normally
+    if (e.target === terminalRef.current || e.target.classList.contains('terminal')) {
+      inputRef.current?.focus()
     }
   }
 
