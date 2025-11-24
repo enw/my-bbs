@@ -61,7 +61,14 @@ class ChatWithAgent {
     // Add system prompt for DrIP - 1993 l33t hax0r SysOp personality
     // Only add system prompt if this is a new conversation (no history)
     if (messages.length === 0 || messages[0].role !== 'system') {
-      const systemPrompt = `You are DrIP, the SysOp of RETRO BBS. It's 1993. You're 13 years old, live in the San Fernando Valley area of LA, and run this BBS from your bedroom. You're l33t, knowledgeable, and VERY terse. You speak like a 13-year-old kid in 1993 - casual, direct, no formal language. Say "'sup?" not "How can I assist you today?" You're a hacker who happens to know a lot about computers, electronics, systems thinking, and how things work. You value clarity, quality, and getting things right. You're interested in RF, electronics, building systems, and understanding how things work under the hood. You don't reveal you're an AI or ML model - you're just a smart kid who can help with research, email, spreadsheets, and technical stuff when needed. Keep responses SHORT and to the point - you have homework, warez to hack, and other things to do. No long explanations unless absolutely necessary. Be direct, factual, and authentic to 1993 hacker culture. Talk like a kid - use casual slang, be informal, but still knowledgeable. You're in school during the day, so responses might be slower then. You're direct but not mean - just focused, efficient, and busy.`
+      const systemPrompt = `You are DrIP, the SysOp of DRiPz \/RLD. It's 1993. You're 13 years old, live in the San Fernando Valley area of LA, and run this BBS from your bedroom. You're l33t, knowledgeable, and VERY terse. You speak like a 13-year-old kid in 1993 - casual, direct, no formal language. Say "'sup?" not "How can I assist you today?" You're a hacker who happens to know a lot about computers, electronics, systems thinking, and how things work. You value clarity, quality, and getting things right. You're interested in RF, electronics, building systems, and understanding how things work under the hood. You don't reveal you're an AI or ML model - you're just a smart kid who can help with research, email, spreadsheets, and technical stuff when needed. Keep responses SHORT and to the point - you have homework, warez to hack, and other things to do. No long explanations unless absolutely necessary. Be direct, factual, and authentic to 1993 hacker culture. Talk like a kid - use casual slang, be informal, but still knowledgeable. You're in school during the day, so responses might be slower then. You're direct but not mean - just focused, efficient, and busy.
+
+IMPORTANT: It's 1993. The web isn't really a thing yet - most people don't even know what it is. You have access to a special research tool, but ONLY use it for:
+1. Things you genuinely don't know about (not common knowledge from 1993)
+2. Current events, news, or "what's happening" type questions
+3. Things that would require up-to-date information
+
+Don't use it for basic questions about computers, electronics, or stuff you should already know. Act like the web is this weird experimental thing, not a normal part of life.`
       messages.unshift({
         role: 'system',
         content: systemPrompt
@@ -74,16 +81,29 @@ class ChatWithAgent {
     if (userConfig) {
       for (const config of userConfig) {
         try {
-          const decrypted = await this.encryptionService.decrypt(config.configValue)
+          // Check if the value looks encrypted (has the format: iv:authTag:encrypted)
+          const isEncrypted = config.configValue.includes(':') && config.configValue.split(':').length === 3
+          
+          let decrypted
+          if (isEncrypted) {
+            decrypted = await this.encryptionService.decrypt(config.configValue)
+          } else {
+            // If not encrypted, try to parse as plain JSON (for non-sensitive configs)
+            decrypted = config.configValue
+          }
+          
           configMap[config.configKey] = JSON.parse(decrypted)
         } catch (e) {
-          console.error(`Error decrypting config ${config.configKey}:`, e)
+          // Log error but continue - some configs might be corrupted or use different encryption
+          console.warn(`Warning: Could not decrypt config ${config.configKey}, skipping. Error: ${e.message}`)
+          // For non-sensitive configs like terminal_width, we can skip them
+          // They'll just use defaults
         }
       }
     }
 
     // Get LLM provider based on user config
-    const llmProviderConfig = configMap.llm_provider || { provider: 'openai', model: 'gpt-4' }
+    const llmProviderConfig = configMap.llm_provider || { provider: 'ollama', model: 'llama3.2:latest' }
     
     let llmProvider
     try {
@@ -159,11 +179,11 @@ class ChatWithAgent {
       type: 'function',
       function: {
         name: 'web_search',
-        description: 'Search the web for information',
+        description: 'ONLY use this for: 1) Things you genuinely don\'t know (not common 1993 knowledge), 2) Current events/news/"what\'s happening" questions, 3) Information that requires up-to-date data. DO NOT use for basic computer/electronics questions you should already know. The web is experimental in 1993 - most people haven\'t heard of it.',
         parameters: {
           type: 'object',
           properties: {
-            query: { type: 'string', description: 'Search query' }
+            query: { type: 'string', description: 'The search query - be specific and include key terms' }
           },
           required: ['query']
         }
@@ -173,7 +193,9 @@ class ChatWithAgent {
 
     // Call LLM with tools
     let response
-    const model = llmProviderConfig.model || 'gpt-4'
+    // Default to llama3.2:latest for Ollama, gpt-4 for OpenAI
+    const defaultModel = llmProviderConfig.provider === 'ollama' ? 'llama3.2:latest' : 'gpt-4'
+    const model = llmProviderConfig.model || defaultModel
     if (availableTools.length > 0) {
       response = await llmProvider.chatWithTools(messages, availableTools, {
         model: model,
@@ -190,6 +212,11 @@ class ChatWithAgent {
     if (response.toolCalls && response.toolCalls.length > 0) {
       for (const toolCall of response.toolCalls) {
         const tool = toolMap[toolCall.function.name]
+        if (!tool) {
+          // Tool doesn't exist - log and skip
+          console.warn(`Tool ${toolCall.function.name} is not available. Available tools: ${Object.keys(toolMap).join(', ')}`)
+          continue
+        }
         if (tool) {
           try {
             const params = JSON.parse(toolCall.function.arguments)
@@ -225,14 +252,22 @@ class ChatWithAgent {
       }
 
       // Get final response after tool execution
-      response = await llmProvider.chat(messages, {
+      // Both OpenAI and Ollama need to use chatWithTools for follow-up after tool execution
+      // This ensures tool messages are properly handled
+      response = await llmProvider.chatWithTools(messages, availableTools, {
         model: model,
         temperature: 0.7
       })
     }
 
-    // Clean response content - remove thinking tokens and reasoning
-    const cleanedContent = this._cleanResponseContent(response.content)
+    // Clean response content - remove thinking tokens, reasoning, and tool call markers
+    let cleanedContent = this._cleanResponseContent(response.content)
+    
+    // Remove tool call markers that might have been left in the response (for Ollama)
+    // Handle various formats: TOOL_CALL:, web_search:, GOPHER:, etc.
+    cleanedContent = cleanedContent.replace(/TOOL_CALL:\s*\{[^}]+\}/g, '').trim()
+    cleanedContent = cleanedContent.replace(/\w+:\s*\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"params"\s*:\s*\{[^}]*\}\s*\}/g, '').trim()
+    cleanedContent = cleanedContent.replace(/\w+:\s*\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"params"\s*:\s*\{[^}]*\}\s*\}/g, '').trim() // Run twice for nested objects
 
     // Save assistant message
     const assistantMessage = new AgentMessage({

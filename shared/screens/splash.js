@@ -10,7 +10,7 @@ const SPLASH_SCREEN = `╔══════════════════
 ║  ██║  ██║███████╗   ██║   ██║  ██║╚██████╔╝    ██████╔╝██████╔╝███████║  ║
 ║  ╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝     ╚═════╝ ╚═════╝ ╚══════╝  ║
 ║                                                                           ║
-║                       Welcome to the RETRO BBS!                            ║
+║                       Welcome to DRiPz \/RLD!                            ║
 ║                                                                           ║
 ║                    A Nostalgic Trip Back to 1993                        ║
 ║                                                                           ║

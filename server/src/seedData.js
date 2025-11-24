@@ -113,7 +113,7 @@ async function seedData() {
   try {
     db.prepare(`
       INSERT INTO private_messages (from_user_id, to_user_id, subject, body)
-      VALUES (1, 1, 'Welcome to the BBS!', 'Thanks for joining Retro BBS! Feel free to explore all the message boards and file areas. Remember to maintain your upload/download ratio. If you need anything, just send me a message!\n\n- SysOp')
+      VALUES (1, 1, 'Welcome to the BBS!', 'Thanks for joining DRiPz \/RLD! Feel free to explore all the message boards and file areas. Remember to maintain your upload/download ratio. If you need anything, just send me a message!\n\n- SysOp')
     `).run()
   } catch (e) {
     // Message exists

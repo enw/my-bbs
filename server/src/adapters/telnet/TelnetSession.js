@@ -97,7 +97,7 @@ class TelnetSession {
 ║  ${ANSI.BRIGHT_YELLOW}██║  ██║███████╗   ██║   ██║  ██║╚██████╔╝    ██████╔╝██████╔╝███████║${ANSI.BRIGHT_CYAN}  ║
 ║  ${ANSI.BRIGHT_YELLOW}╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝     ╚═════╝ ╚═════╝ ╚══════╝${ANSI.BRIGHT_CYAN}  ║
 ║                                                                           ║
-║                       ${ANSI.BRIGHT_WHITE}Welcome to the RETRO BBS!${ANSI.BRIGHT_CYAN}                            ║
+║                       ${ANSI.BRIGHT_WHITE}Welcome to DRiPz \/RLD!${ANSI.BRIGHT_CYAN}                            ║
 ║                                                                           ║
 ║                    ${ANSI.CYAN}A Nostalgic Trip Back to 1993${ANSI.BRIGHT_CYAN}                        ║
 ║                                                                           ║
@@ -526,7 +526,7 @@ ${ANSI.BRIGHT_WHITE}Press any key to return to main menu...${ANSI.RESET}`
 
 ${ANSI.BRIGHT_CYAN}═══════════════════════════════════════════════════════════════════════════${ANSI.RESET}
 
-${ANSI.BRIGHT_YELLOW}              Thanks for calling RETRO BBS!${ANSI.RESET}
+${ANSI.BRIGHT_YELLOW}              Thanks for calling DRiPz \/RLD!${ANSI.RESET}
 
 ${ANSI.BRIGHT_WHITE}              Please call again soon!${ANSI.RESET}
 

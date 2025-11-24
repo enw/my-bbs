@@ -45,7 +45,7 @@ function createServer() {
   // Root route - explain setup
   app.get('/', (req, res) => {
     res.json({
-      message: 'Retro BBS API Server',
+      message: 'DRiPz \/RLD API Server',
       info: 'This is the backend API server. The frontend is served on http://localhost:5173',
       endpoints: {
         health: '/api/health',
@@ -61,7 +61,7 @@ function createServer() {
 
   // Health check
   app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', message: 'Retro BBS Server Running' })
+    res.json({ status: 'ok', message: 'DRiPz \/RLD Server Running' })
   })
 
   // Legacy routes (boards and files - keeping for now)
@@ -109,7 +109,7 @@ function createServer() {
 
   // Start HTTP server
   app.listen(PORT, () => {
-    console.log(`Retro BBS HTTP Server running on http://localhost:${PORT}`)
+    console.log(`DRiPz \/RLD HTTP Server running on http://localhost:${PORT}`)
   })
 
   // Return both servers for graceful shutdown

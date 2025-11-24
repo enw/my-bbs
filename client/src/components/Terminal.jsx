@@ -35,14 +35,16 @@ const Terminal = () => {
   useEffect(() => {
     // Scroll to bottom to keep input visible
     if (terminalRef.current) {
-      // Use requestAnimationFrame to ensure DOM is updated
+      // Use requestAnimationFrame with a small delay to ensure DOM is fully updated
       requestAnimationFrame(() => {
-        if (terminalRef.current) {
-          terminalRef.current.scrollTop = terminalRef.current.scrollHeight
-        }
+        setTimeout(() => {
+          if (terminalRef.current) {
+            terminalRef.current.scrollTop = terminalRef.current.scrollHeight
+          }
+        }, 50)
       })
     }
-  }, [lines, input])
+  }, [lines, input, currentScreen])
 
   const loadTerminalWidth = async () => {
     try {
@@ -86,7 +88,7 @@ const Terminal = () => {
 ║  \x1b[1;33m██║  ██║███████╗   ██║   ██║  ██║╚██████╔╝    ██████╔╝██████╔╝███████║\x1b[1;36m  ║
 ║  \x1b[1;33m╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝     ╚═════╝ ╚═════╝ ╚══════╝\x1b[1;36m  ║
 ║                                                                           ║
-║                       \x1b[1;37mWelcome to the RETRO BBS!\x1b[1;36m                            ║
+║                       \x1b[1;37mWelcome to DRiPz \/RLD!\x1b[1;36m                            ║
 ║                                                                           ║
 ║                    \x1b[0;36mA Nostalgic Trip Back to 1993\x1b[1;36m                        ║
 ║                                                                           ║
@@ -118,6 +120,7 @@ at SysOp discretion.\x1b[0m
 
     const parsed = parser.current.parseANSI(splash)
     setLines(parsed)
+    setCurrentScreen('splash')
   }
 
   const showMainMenu = (handle) => {
@@ -336,7 +339,7 @@ CyberNinja      Miami, FL          2 days ago               178
 
 \x1b[1;36m═══════════════════════════════════════════════════════════════════════════\x1b[0m
 
-\x1b[1;33m              Thanks for calling RETRO BBS!\x1b[0m
+\x1b[1;33m              Thanks for calling DRiPz \/RLD!\x1b[0m
 
 \x1b[1;37m              Please call again soon!\x1b[0m
 

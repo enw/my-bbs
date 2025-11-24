@@ -54,8 +54,10 @@
 
 .terminal-input-line {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   min-height: 1.2em;
+  padding-top: 2px;
+  flex-shrink: 0;
 }
 
 .cursor {

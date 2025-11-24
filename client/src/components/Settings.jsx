@@ -4,11 +4,11 @@ import '../styles/Terminal.css'
 
 const Settings = ({ onBack }) => {
   const [settings, setSettings] = useState({
-    llmProvider: 'openai',
+    llmProvider: 'ollama',
     openaiApiKey: '',
     ollamaUrl: 'http://localhost:11434',
     mcpUrl: 'http://localhost:3001',
-    llmModel: 'gpt-4',
+    llmModel: 'llama3.2:latest',
     terminalWidth: 80
   })
   const [loading, setLoading] = useState(false)
@@ -61,8 +61,8 @@ const Settings = ({ onBack }) => {
           openaiApiKey: data.openai_api_key?.apiKey ? '••••••••' : '',
           ollamaUrl: data.ollama_config?.url || prev.ollamaUrl,
           mcpUrl: data.mcp_url?.url || prev.mcpUrl,
-          llmProvider: data.llm_provider?.provider || prev.llmProvider,
-          llmModel: data.llm_provider?.model || prev.llmModel,
+          llmProvider: data.llm_provider?.provider || 'ollama',
+          llmModel: data.llm_provider?.model || 'llama3.2:latest',
           terminalWidth: data.terminal_width?.width || prev.terminalWidth
         }))
       }
@@ -154,9 +154,13 @@ const Settings = ({ onBack }) => {
       const data = await response.json()
       if (data.success && data.models) {
         setOllamaModels(data.models)
-        // If current model is not in the list, set to first model or empty
+        // If current model is not in the list, default to llama3.2:latest if available, otherwise first available
         if (data.models.length > 0 && !data.models.includes(settings.llmModel)) {
-          setSettings(prev => ({ ...prev, llmModel: data.models[0] }))
+          const defaultModel = data.models.find(m => m.includes('llama3.2')) || 
+                              data.models.find(m => m.includes('llama3')) ||
+                              data.models[0] || 
+                              'llama3.2:latest'
+          setSettings(prev => ({ ...prev, llmModel: defaultModel }))
         }
       } else {
         setOllamaModels([])

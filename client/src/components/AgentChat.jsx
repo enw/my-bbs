@@ -185,12 +185,10 @@ const AgentChat = ({ onBack }) => {
             <span style={{ color: '#00ffff' }}>Paging DrIP...</span>
           </div>
         )}
-        {!isLoading && (
-          <div className="terminal-line terminal-input-line">
-            <span style={{ color: '#aaa' }}>{input}</span>
-            <span className="cursor visible">_</span>
-          </div>
-        )}
+        <div className="terminal-line terminal-input-line">
+          <span style={{ color: '#aaa' }}>{input}</span>
+          <span className={`cursor ${!isLoading ? 'visible' : ''}`}>_</span>
+        </div>
       </div>
       <input
         ref={inputRef}
