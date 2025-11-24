@@ -8,26 +8,49 @@ const AgentChat = ({ onBack }) => {
   const [isLoading, setIsLoading] = useState(false)
   const [conversations, setConversations] = useState([])
   const [currentConversationId, setCurrentConversationId] = useState(null)
+  const [terminalWidth, setTerminalWidth] = useState(80)
   const terminalRef = useRef(null)
   const inputRef = useRef(null)
   const parser = useRef(new ANSIParser())
 
   useEffect(() => {
     loadConversations()
+    loadTerminalWidth()
     if (inputRef.current) {
       inputRef.current.focus()
     }
   }, [])
 
+  const loadTerminalWidth = async () => {
+    try {
+      const response = await fetch('/api/settings', {
+        credentials: 'include'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        const width = data.terminal_width?.width || 80
+        setTerminalWidth(width)
+      }
+    } catch (error) {
+      console.error('Error loading terminal width:', error)
+    }
+  }
+
   useEffect(() => {
+    // Scroll to bottom to keep input visible
     if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        if (terminalRef.current) {
+          terminalRef.current.scrollTop = terminalRef.current.scrollHeight
+        }
+      })
     }
     // Refocus input after messages update (including after response)
     if (inputRef.current && !isLoading) {
       inputRef.current.focus()
     }
-  }, [messages, isLoading])
+  }, [messages, isLoading, input])
 
   const loadConversations = async () => {
     try {
@@ -132,9 +155,9 @@ const AgentChat = ({ onBack }) => {
 
   return (
     <div className="terminal" ref={terminalRef} onClick={() => inputRef.current?.focus()}>
-      <div className="terminal-screen">
+      <div className="terminal-screen" style={{ width: `${terminalWidth}ch`, maxWidth: `${terminalWidth}ch` }}>
         {messages.map((line, lineIdx) => (
-          <div key={lineIdx} className="terminal-line">
+          <div key={lineIdx} className="terminal-line" style={{ maxWidth: `${terminalWidth}ch` }}>
             {line.map((char, charIdx) => (
               <span
                 key={charIdx}
@@ -155,7 +178,12 @@ const AgentChat = ({ onBack }) => {
             <span style={{ color: '#00ffff' }}>Paging DrIP...</span>
           </div>
         )}
-        <span className="cursor visible">_</span>
+        {!isLoading && (
+          <div className="terminal-line terminal-input-line">
+            <span style={{ color: '#aaa' }}>{input}</span>
+            <span className="cursor visible">_</span>
+          </div>
+        )}
       </div>
       <input
         ref={inputRef}
@@ -168,7 +196,7 @@ const AgentChat = ({ onBack }) => {
         maxLength={500}
         autoFocus
         disabled={isLoading}
-        placeholder={isLoading ? 'Waiting for response...' : 'Type your message...'}
+        placeholder=""
       />
     </div>
   )

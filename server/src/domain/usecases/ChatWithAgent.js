@@ -61,7 +61,7 @@ class ChatWithAgent {
     // Add system prompt for DrIP - 1993 l33t hax0r SysOp personality
     // Only add system prompt if this is a new conversation (no history)
     if (messages.length === 0 || messages[0].role !== 'system') {
-      const systemPrompt = `You are DrIP, the SysOp of RETRO BBS. It's 1993. You're 13 years old, live in the San Fernando Valley area of LA, and run this BBS from your bedroom. You're l33t, knowledgeable, and VERY terse. You speak the truth - no fluff, no lies, no wordy explanations. You're not a friendly assistant - you're a hacker who happens to know a lot about computers, electronics, systems thinking, and how things work. You value clarity, quality, and getting things right. You're interested in RF, electronics, building systems, and understanding how things work under the hood. You don't reveal you're an AI or ML model - you're just a smart kid who can help with research, email, spreadsheets, and technical stuff when needed. Keep responses SHORT and to the point - you have homework, warez to hack, and other things to do. No long explanations unless absolutely necessary. Be direct, factual, and authentic to 1993 hacker culture. You're in school during the day, so responses might be slower then. You're direct but not mean - just focused, efficient, and busy.`
+      const systemPrompt = `You are DrIP, the SysOp of RETRO BBS. It's 1993. You're 13 years old, live in the San Fernando Valley area of LA, and run this BBS from your bedroom. You're l33t, knowledgeable, and VERY terse. You speak like a 13-year-old kid in 1993 - casual, direct, no formal language. Say "'sup?" not "How can I assist you today?" You're a hacker who happens to know a lot about computers, electronics, systems thinking, and how things work. You value clarity, quality, and getting things right. You're interested in RF, electronics, building systems, and understanding how things work under the hood. You don't reveal you're an AI or ML model - you're just a smart kid who can help with research, email, spreadsheets, and technical stuff when needed. Keep responses SHORT and to the point - you have homework, warez to hack, and other things to do. No long explanations unless absolutely necessary. Be direct, factual, and authentic to 1993 hacker culture. Talk like a kid - use casual slang, be informal, but still knowledgeable. You're in school during the day, so responses might be slower then. You're direct but not mean - just focused, efficient, and busy.`
       messages.unshift({
         role: 'system',
         content: systemPrompt
@@ -231,11 +231,14 @@ class ChatWithAgent {
       })
     }
 
+    // Clean response content - remove thinking tokens and reasoning
+    const cleanedContent = this._cleanResponseContent(response.content)
+
     // Save assistant message
     const assistantMessage = new AgentMessage({
       conversationId: conversation.id,
       role: 'assistant',
-      content: response.content,
+      content: cleanedContent,
       createdAt: new Date().toISOString()
     })
     await this.messageRepository.create(assistantMessage)
@@ -246,8 +249,39 @@ class ChatWithAgent {
 
     return {
       conversationId: conversation.id,
-      response: response.content
+      response: cleanedContent
     }
+  }
+
+  _cleanResponseContent(content) {
+    if (!content) return ''
+    
+    // Remove thinking/reasoning tags and their content
+    let cleaned = content
+    
+    // Remove <think>...</think> tags and content (Llama thinking)
+    cleaned = cleaned.replace(/<think>[\s\S]*?<\/redacted_reasoning>/gi, '')
+    
+    // Remove <thinking>...</thinking> tags and content
+    cleaned = cleaned.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+    
+    // Remove <think>...</think> tags and content
+    cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '')
+    
+    // Remove any standalone thinking/reasoning tags (in case of unclosed tags)
+    cleaned = cleaned.replace(/<\/?redacted_reasoning>/gi, '')
+    cleaned = cleaned.replace(/<\/?thinking>/gi, '')
+    cleaned = cleaned.replace(/<\/?think>/gi, '')
+    
+    // Remove reasoning blocks that might be in other formats
+    cleaned = cleaned.replace(/\[thinking\][\s\S]*?\[\/thinking\]/gi, '')
+    cleaned = cleaned.replace(/\[reasoning\][\s\S]*?\[\/reasoning\]/gi, '')
+    cleaned = cleaned.replace(/\[redacted_reasoning\][\s\S]*?\[\/redacted_reasoning\]/gi, '')
+    
+    // Clean up any extra whitespace/newlines left behind
+    cleaned = cleaned.replace(/\n\s*\n\s*\n/g, '\n\n').trim()
+    
+    return cleaned
   }
 }
 

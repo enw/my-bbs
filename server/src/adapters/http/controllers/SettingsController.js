@@ -37,7 +37,7 @@ class SettingsController {
       // Authentication disabled for localhost development
       const userId = this.getUserId(req)
 
-      const { llmProvider, openaiApiKey, ollamaUrl, mcpUrl, llmModel } = req.body
+      const { llmProvider, openaiApiKey, ollamaUrl, mcpUrl, llmModel, terminalWidth } = req.body
 
       // Save LLM provider
       if (llmProvider) {
@@ -65,6 +65,13 @@ class SettingsController {
       if (mcpUrl) {
         await this.saveUserConfig.execute(userId, 'mcp_url', {
           url: mcpUrl
+        })
+      }
+
+      // Save terminal width if provided
+      if (terminalWidth) {
+        await this.saveUserConfig.execute(userId, 'terminal_width', {
+          width: terminalWidth
         })
       }
 

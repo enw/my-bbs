@@ -14,7 +14,7 @@
 }
 
 .terminal-screen {
-  width: 80ch; /* 80 characters wide */
+  /* Width set dynamically via inline style (80ch or 132ch) */
   height: calc(24 * 1.2em); /* 24 lines tall */
   overflow-y: auto;
   overflow-x: hidden;
@@ -34,7 +34,7 @@
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  max-width: 80ch;
+  width: 100%;
   min-height: 1.2em;
 }
 
@@ -42,6 +42,12 @@
   position: absolute;
   left: -9999px;
   opacity: 0;
+}
+
+.terminal-input-line {
+  display: flex;
+  align-items: center;
+  min-height: 1.2em;
 }
 
 .cursor {

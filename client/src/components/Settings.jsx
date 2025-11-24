@@ -8,7 +8,8 @@ const Settings = ({ onBack }) => {
     openaiApiKey: '',
     ollamaUrl: 'http://localhost:11434',
     mcpUrl: 'http://localhost:3001',
-    llmModel: 'gpt-4'
+    llmModel: 'gpt-4',
+    terminalWidth: 80
   })
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -61,7 +62,8 @@ const Settings = ({ onBack }) => {
           ollamaUrl: data.ollama_config?.url || prev.ollamaUrl,
           mcpUrl: data.mcp_url?.url || prev.mcpUrl,
           llmProvider: data.llm_provider?.provider || prev.llmProvider,
-          llmModel: data.llm_provider?.model || prev.llmModel
+          llmModel: data.llm_provider?.model || prev.llmModel,
+          terminalWidth: data.terminal_width?.width || prev.terminalWidth
         }))
       }
     } catch (error) {
@@ -267,6 +269,17 @@ const Settings = ({ onBack }) => {
                 onChange={(e) => setSettings({ ...settings, llmModel: e.target.value })}
               />
             )}
+          </div>
+
+          <div className="setting-item">
+            <label className="setting-label">Terminal Width:</label>
+            <select
+              value={settings.terminalWidth}
+              onChange={(e) => setSettings({ ...settings, terminalWidth: parseInt(e.target.value) })}
+            >
+              <option value={80}>80 characters (standard)</option>
+              <option value={132}>132 characters (wide)</option>
+            </select>
           </div>
 
           <div className="setting-actions">

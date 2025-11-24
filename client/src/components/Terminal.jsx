@@ -12,11 +12,15 @@ const Terminal = () => {
   const [showAgentChat, setShowAgentChat] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [currentHandle, setCurrentHandle] = useState(null)
+  const [terminalWidth, setTerminalWidth] = useState(80)
   const terminalRef = useRef(null)
   const inputRef = useRef(null)
   const parser = useRef(new ANSIParser())
 
   useEffect(() => {
+    // Load terminal width setting
+    loadTerminalWidth()
+
     // Show splash screen
     showSplashScreen()
 
@@ -27,6 +31,33 @@ const Terminal = () => {
 
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    // Scroll to bottom to keep input visible
+    if (terminalRef.current) {
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        if (terminalRef.current) {
+          terminalRef.current.scrollTop = terminalRef.current.scrollHeight
+        }
+      })
+    }
+  }, [lines, input])
+
+  const loadTerminalWidth = async () => {
+    try {
+      const response = await fetch('/api/settings', {
+        credentials: 'include'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        const width = data.terminal_width?.width || 80
+        setTerminalWidth(width)
+      }
+    } catch (error) {
+      console.error('Error loading terminal width:', error)
+    }
+  }
 
   useEffect(() => {
     // Auto-focus input
@@ -343,9 +374,9 @@ CyberNinja      Miami, FL          2 days ago               178
 
   return (
     <div className="terminal" ref={terminalRef} onClick={handleTerminalClick}>
-      <div className="terminal-screen">
+      <div className="terminal-screen" style={{ width: `${terminalWidth}ch`, maxWidth: `${terminalWidth}ch` }}>
         {lines.map((line, lineIdx) => (
-          <div key={lineIdx} className="terminal-line">
+          <div key={lineIdx} className="terminal-line" style={{ maxWidth: `${terminalWidth}ch` }}>
             {line.map((char, charIdx) => (
               <span
                 key={charIdx}
@@ -361,7 +392,10 @@ CyberNinja      Miami, FL          2 days ago               178
             ))}
           </div>
         ))}
-        <span className={`cursor ${cursorVisible ? 'visible' : ''}`}>_</span>
+        <div className="terminal-line terminal-input-line">
+          <span style={{ color: '#aaa' }}>{input}</span>
+          <span className={`cursor ${cursorVisible ? 'visible' : ''}`}>_</span>
+        </div>
       </div>
       <input
         ref={inputRef}
