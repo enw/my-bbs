@@ -128,6 +128,28 @@ function initDatabase(db) {
     )
   `)
 
+  // Ensure at least one user exists for localhost development
+  // This is needed when authentication is disabled and SettingsController uses userId=1
+  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get()
+  if (userCount.count === 0) {
+    // If no users exist, create one (will get id=1 automatically)
+    try {
+      db.prepare(`
+        INSERT INTO users (handle, password_hash, real_name, location, phone, first_call, last_call, total_calls, access_level)
+        VALUES ('DefaultUser', 'password', 'Default User', 'Localhost', 'N/A', datetime('now'), datetime('now'), 0, 1)
+      `).run()
+      console.log('Created default user (id=1) for localhost development')
+    } catch (e) {
+      console.log('Could not create default user:', e.message)
+    }
+  } else {
+    // If users exist, ensure user with id=1 exists
+    const user1 = db.prepare('SELECT * FROM users WHERE id = 1').get()
+    if (!user1) {
+      console.log('Warning: No user with id=1 exists. Settings will use first available user ID.')
+    }
+  }
+
   // Seed default boards
   const boardCount = db.prepare('SELECT COUNT(*) as count FROM boards').get()
   if (boardCount.count === 0) {

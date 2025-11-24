@@ -125,7 +125,7 @@ at SysOp discretion.${ANSI.RESET}
 
 ${ANSI.BRIGHT_GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${ANSI.RESET}
 
-${ANSI.BRIGHT_WHITE}Press ${ANSI.BRIGHT_CYAN}[N]${ANSI.BRIGHT_WHITE} for New User or ${ANSI.BRIGHT_CYAN}[L]${ANSI.BRIGHT_WHITE} to Login:${ANSI.RESET} `
+${ANSI.BRIGHT_WHITE}Press ${ANSI.BRIGHT_CYAN}[L]${ANSI.BRIGHT_WHITE} to Login:${ANSI.RESET} `
     
     this.write(splash)
     this.currentScreen = 'splash'
@@ -155,7 +155,9 @@ ${ANSI.BRIGHT_WHITE}Press ${ANSI.BRIGHT_CYAN}[N]${ANSI.BRIGHT_WHITE} for New Use
     // Handle single-key commands on splash screen
     if (this.currentScreen === 'splash') {
       const key = cleanData.toLowerCase().trim()
-      if (key === 'n' || key === 'l') {
+      // New user registration temporarily disabled
+      // if (key === 'n' || key === 'l') {
+      if (key === 'l') {
         this.processCommand(key)
         return
       }
@@ -175,9 +177,11 @@ ${ANSI.BRIGHT_WHITE}Press ${ANSI.BRIGHT_CYAN}[N]${ANSI.BRIGHT_WHITE} for New Use
   
   async processCommand(cmd) {
     if (this.currentScreen === 'splash') {
-      if (cmd === 'n') {
-        this.showNewUserForm()
-      } else if (cmd === 'l') {
+      // New user registration temporarily disabled
+      // if (cmd === 'n') {
+      //   this.showNewUserForm()
+      // } else 
+      if (cmd === 'l') {
         this.showLoginForm()
       }
     } else if (this.currentScreen.startsWith('newuser-')) {

@@ -4,6 +4,8 @@ const session = require('express-session')
 const { createDatabase } = require('./database')
 const createDependencyContainer = require('./dependencyContainer')
 const createUserRoutes = require('../adapters/http/routes/userRoutes')
+const createAgentRoutes = require('../adapters/http/routes/agentRoutes')
+const createSettingsRoutes = require('../adapters/http/routes/settingsRoutes')
 const createTelnetServer = require('../adapters/telnet/TelnetServer')
 
 function createServer() {
@@ -39,6 +41,23 @@ function createServer() {
       maxAge: 3600000 // 1 hour
     }
   }))
+
+  // Root route - explain setup
+  app.get('/', (req, res) => {
+    res.json({
+      message: 'Retro BBS API Server',
+      info: 'This is the backend API server. The frontend is served on http://localhost:5173',
+      endpoints: {
+        health: '/api/health',
+        users: '/api/users',
+        agent: '/api/agent',
+        settings: '/api/settings',
+        boards: '/api/boards',
+        files: '/api/files'
+      },
+      telnet: `telnet://localhost:${TELNET_PORT}`
+    })
+  })
 
   // Health check
   app.get('/api/health', (req, res) => {
@@ -81,6 +100,12 @@ function createServer() {
 
   // User routes
   app.use('/api/users', createUserRoutes(container.controllers.userController))
+
+  // Agent routes
+  app.use('/api/agent', createAgentRoutes(container.controllers.agentController))
+
+  // Settings routes
+  app.use('/api/settings', createSettingsRoutes(container.controllers.settingsController))
 
   // Start HTTP server
   app.listen(PORT, () => {

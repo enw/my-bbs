@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { ANSIParser } from '../lib/ansiParser'
+import AgentChat from './AgentChat'
+import Settings from './Settings'
 import '../styles/Terminal.css'
 
 const Terminal = () => {
@@ -7,6 +9,9 @@ const Terminal = () => {
   const [input, setInput] = useState('')
   const [cursorVisible, setCursorVisible] = useState(true)
   const [currentScreen, setCurrentScreen] = useState('splash')
+  const [showAgentChat, setShowAgentChat] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [currentHandle, setCurrentHandle] = useState(null)
   const terminalRef = useRef(null)
   const inputRef = useRef(null)
   const parser = useRef(new ANSIParser())
@@ -76,13 +81,14 @@ at SysOp discretion.\x1b[0m
 
 \x1b[1;32m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m
 
-\x1b[1;37mPress \x1b[1;36m[N]\x1b[1;37m for New User or \x1b[1;36m[L]\x1b[1;37m to Login:\x1b[0m `
+\x1b[1;37mPress \x1b[1;36m[L]\x1b[1;37m to Login:\x1b[0m `
 
     const parsed = parser.current.parseANSI(splash)
     setLines(parsed)
   }
 
   const showMainMenu = (handle) => {
+    setCurrentHandle(handle)
     const menu = `\x1b[0;37m
 \x1b[1;36m═══════════════════════════════════════════════════════════════════════════
 
@@ -97,6 +103,8 @@ at SysOp discretion.\x1b[0m
 \x1b[1;36m[\x1b[1;37mP\x1b[1;36m]\x1b[0;37m rivate Mail
 \x1b[1;36m[\x1b[1;37mU\x1b[1;36m]\x1b[0;37m ser List
 \x1b[1;36m[\x1b[1;37mY\x1b[1;36m]\x1b[0;37m our Statistics
+\x1b[1;36m[\x1b[1;37mA\x1b[1;36m]\x1b[0;37m gent Chat
+\x1b[1;36m[\x1b[1;37mC\x1b[1;36m]\x1b[0;37m onfig
 \x1b[1;36m[\x1b[1;37mL\x1b[1;36m]\x1b[0;37m ogoff
 
 \x1b[1;33mTime Left: 60 minutes\x1b[0m
@@ -118,9 +126,11 @@ at SysOp discretion.\x1b[0m
 
   const handleCommand = (cmd) => {
     if (currentScreen === 'splash') {
-      if (cmd === 'n') {
-        showNewUserForm()
-      } else if (cmd === 'l') {
+      // New user registration temporarily disabled
+      // if (cmd === 'n') {
+      //   showNewUserForm()
+      // } else 
+      if (cmd === 'l') {
         showLoginForm()
       }
     } else if (currentScreen === 'main') {
@@ -139,6 +149,12 @@ at SysOp discretion.\x1b[0m
           break
         case 'y':
           showStats()
+          break
+        case 'a':
+          setShowAgentChat(true)
+          break
+        case 'c':
+          setShowSettings(true)
           break
         case 'l':
           logoff()
@@ -306,6 +322,23 @@ CyberNinja      Miami, FL          2 days ago               178
   const addLine = (text) => {
     const parsed = parser.current.parseANSI(text)
     setLines(prev => [...prev, ...parsed])
+  }
+
+  const handleBackToMain = () => {
+    setShowAgentChat(false)
+    setShowSettings(false)
+    if (currentHandle) {
+      showMainMenu(currentHandle)
+    }
+  }
+
+  // Render AgentChat or Settings if active
+  if (showAgentChat) {
+    return <AgentChat onBack={handleBackToMain} />
+  }
+
+  if (showSettings) {
+    return <Settings onBack={handleBackToMain} />
   }
 
   return (
